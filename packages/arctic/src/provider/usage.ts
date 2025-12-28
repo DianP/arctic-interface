@@ -522,8 +522,26 @@ export namespace ProviderUsage {
     const utilization = typeof data.utilization === "number" ? data.utilization : undefined
     if (utilization === undefined) return undefined
     const resetsAt = resolveAnthropicReset(data.resets_at)
-    const resetLabel = resetsAt ? `resets ${new Date(resetsAt * 1000).toISOString()}` : undefined
+    const resetLabel = resetsAt ? formatAnthropicTimeRemaining(resetsAt) : undefined
     return `${label}: ${utilization.toFixed(0)}% used${resetLabel ? ` (${resetLabel})` : ""}`
+  }
+
+  function formatAnthropicTimeRemaining(resetsAt: number): string {
+    const now = Date.now()
+    const resetTime = resetsAt * 1000
+    const diff = resetTime - now
+
+    if (diff <= 0) return "resetting soon"
+
+    const totalMinutes = Math.floor(diff / 60000)
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    const days = Math.floor(hours / 24)
+    const hoursInDay = hours % 24
+
+    if (days > 0) return `${days}d ${hoursInDay}h left`
+    if (hours > 0) return `${hours}h ${minutes}m left`
+    return `${minutes}m left`
   }
 
   function getTimeFilter(period: TimePeriod, now: number): (timestamp: number) => boolean {
@@ -1290,13 +1308,18 @@ export namespace ProviderUsage {
   function resolveKimiResetString(data: any): string | undefined {
       const ts = resolveKimiReset(data)
       if (!ts) return undefined
-      
+
       const diff = ts * 1000 - Date.now()
-      if (diff <= 0) return "reset"
-      
-      const mins = Math.ceil(diff / 60000)
-      if (mins < 60) return `resets in ${mins}m`
-      const hours = Math.ceil(mins / 60)
-      return `resets in ${hours}h`
+      if (diff <= 0) return "resetting soon"
+
+      const totalMinutes = Math.floor(diff / 60000)
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      const days = Math.floor(hours / 24)
+      const hoursInDay = hours % 24
+
+      if (days > 0) return `${days}d ${hoursInDay}h left`
+      if (hours > 0) return `${hours}h ${minutes}m left`
+      return `${minutes}m left`
   }
 }

@@ -22,6 +22,12 @@ import {
 } from "../constants";
 
 /**
+ * Global refresh lock to prevent concurrent token refreshes
+ * This ensures only one refresh operation happens at a time across all concurrent requests
+ */
+let refreshPromise: Promise<{ success: true; auth: Auth.Info } | { success: false; response: Response }> | null = null;
+
+/**
  * Determines if the current auth token needs to be refreshed
  * @param auth - Current authentication state
  * @returns True if token is expired or invalid
@@ -36,60 +42,85 @@ export function shouldRefreshToken(auth: Auth.Info): boolean {
 
 /**
  * Refreshes the OAuth token and updates stored credentials
- * @param currentAuth - Current auth state
+ * Uses a global lock to prevent concurrent refreshes from using the same refresh token
+ * @param getAuth - Function to get fresh auth state
  * @param client - Opencode client for updating stored credentials
  * @returns Updated auth or error response
  */
 export async function refreshAndUpdateToken(
-	currentAuth: Auth.Info,
+	getAuth: () => Promise<Auth.Info>,
 	client: ArcticClient,
 ): Promise<
 	{ success: true; auth: Auth.Info } | { success: false; response: Response }
 > {
-	const refreshToken = (currentAuth as any).refreshToken ?? (currentAuth as any).refresh ?? "";
-	const refreshResult = await refreshAccessToken(refreshToken);
-
-	if (refreshResult.type === "failed") {
-		console.error(`[${PLUGIN_NAME}] ${ERROR_MESSAGES.TOKEN_REFRESH_FAILED}`);
-		return {
-			success: false,
-			response: new Response(
-				JSON.stringify({ error: "Token refresh failed" }),
-				{ status: HTTP_STATUS.UNAUTHORIZED },
-			),
-		};
+	// If a refresh is already in progress, wait for it to complete
+	if (refreshPromise) {
+		console.log(`[${PLUGIN_NAME}] Token refresh already in progress, waiting...`);
+		const result = await refreshPromise;
+		// After waiting, reload auth from disk to get the refreshed tokens
+		if (result.success) {
+			const freshAuth = await getAuth();
+			return { success: true, auth: freshAuth };
+		}
+		return result;
 	}
 
-	// Update stored credentials
-	if (currentAuth.type === "codex") {
-		await client.auth.set({
-			path: { id: "codex" },
-			body: {
-				...currentAuth,
-				accessToken: refreshResult.access,
-				refreshToken: refreshResult.refresh,
-				expiresAt: refreshResult.expires,
-			} as any,
-		});
-		(currentAuth as any).accessToken = refreshResult.access;
-		(currentAuth as any).refreshToken = refreshResult.refresh;
-		(currentAuth as any).expiresAt = refreshResult.expires;
-	} else {
-		await client.auth.set({
-			path: { id: "codex" },
-			body: {
-				type: "oauth",
-				access: refreshResult.access,
-				refresh: refreshResult.refresh,
-				expires: refreshResult.expires,
-			},
-		});
-		(currentAuth as any).access = refreshResult.access;
-		(currentAuth as any).refresh = refreshResult.refresh;
-		(currentAuth as any).expires = refreshResult.expires;
-	}
+	// Start a new refresh and store the promise in the global lock
+	refreshPromise = (async () => {
+		try {
+			// Get fresh auth inside the lock to ensure we have the latest tokens
+			const currentAuth = await getAuth();
+			const refreshToken = (currentAuth as any).refreshToken ?? (currentAuth as any).refresh ?? "";
+			const refreshResult = await refreshAccessToken(refreshToken);
 
-	return { success: true, auth: currentAuth };
+			if (refreshResult.type === "failed") {
+				console.error(`[${PLUGIN_NAME}] ${ERROR_MESSAGES.TOKEN_REFRESH_FAILED}`);
+				return {
+					success: false,
+					response: new Response(
+						JSON.stringify({ error: "Token refresh failed" }),
+						{ status: HTTP_STATUS.UNAUTHORIZED },
+					),
+				};
+			}
+
+			// Update stored credentials
+			if (currentAuth.type === "codex") {
+				await client.auth.set({
+					path: { id: "codex" },
+					body: {
+						...currentAuth,
+						accessToken: refreshResult.access,
+						refreshToken: refreshResult.refresh,
+						expiresAt: refreshResult.expires,
+					} as any,
+				});
+				(currentAuth as any).accessToken = refreshResult.access;
+				(currentAuth as any).refreshToken = refreshResult.refresh;
+				(currentAuth as any).expiresAt = refreshResult.expires;
+			} else {
+				await client.auth.set({
+					path: { id: "codex" },
+					body: {
+						type: "oauth",
+						access: refreshResult.access,
+						refresh: refreshResult.refresh,
+						expires: refreshResult.expires,
+					},
+				});
+				(currentAuth as any).access = refreshResult.access;
+				(currentAuth as any).refresh = refreshResult.refresh;
+				(currentAuth as any).expires = refreshResult.expires;
+			}
+
+			return { success: true, auth: currentAuth };
+		} finally {
+			// Clear the lock when refresh completes (success or failure)
+			refreshPromise = null;
+		}
+	})();
+
+	return await refreshPromise;
 }
 
 /**

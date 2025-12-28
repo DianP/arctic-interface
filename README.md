@@ -1,8 +1,8 @@
 # Arctic
 
-> The multi-provider AI coding CLI. Unified limits, sessions, and tools in your terminal.
+> Multi-provider terminal interface for AI coding. Unified limits, sessions, and tools in your terminal.
 
-![Arctic CLI](./packages/web/public/arctic-logo.png)
+![Arctic](./packages/web/public/arctic-logo.png)
 
 Arctic is a high-performance, keyboard-driven terminal interface for AI coding. It unifies multiple providers (Anthropic, OpenAI, Google, etc.) into a single workflow with unified usage tracking, rate limit monitoring, and powerful session management.
 
@@ -19,15 +19,21 @@ Arctic is a high-performance, keyboard-driven terminal interface for AI coding. 
 
 Arctic was built to solve the fragmentation of AI coding tools. Developers often use multiple providers (Codex, Z.ai, Claude Code, Gemini, Antigravity) but lack a unified interface.
 
-The goal of Arctic is to provide a single CLI that allows you to:
+The goal of Arctic is to provide a single terminal interface that allows you to:
 - **Run all providers from one place**: Seamlessly switch between models without changing tools.
 - **Unified Limits**: See 5-hour and weekly usage limits together in a single view.
 - **Consistent Workflow**: Use the same powerful TUI, shortcuts, and agent system regardless of the backend provider.
 
 ## Installation
 
+**macOS / Linux:**
 ```bash
 curl -fsSL https://arcticli.com/install | bash
+```
+
+**Windows:**
+```powershell
+irm https://arcticli.com/install.ps1 | iex
 ```
 
 ## Quick Start

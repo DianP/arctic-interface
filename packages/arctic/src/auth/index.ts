@@ -180,6 +180,27 @@ export namespace Auth {
     const idToken = extractCodexIdToken(tokens?.id_token)
     if (tokens?.access_token && tokens?.refresh_token && idToken) {
       const idInfo = parseCodexIdToken(idToken)
+
+      // Extract real expiry time from access token JWT instead of forcing refresh
+      let expiresAt = Date.now() + 3600 * 1000 // Default: 1 hour from now
+      try {
+        const parts = tokens.access_token.split(".")
+        if (parts.length === 3) {
+          const payloadB64 = parts[1]
+          let base64 = payloadB64.replace(/-/g, "+").replace(/_/g, "/")
+          while (base64.length % 4) {
+            base64 += "="
+          }
+          const payloadBytes = Buffer.from(base64, "base64").toString("utf-8")
+          const payload = JSON.parse(payloadBytes)
+          if (payload.exp && typeof payload.exp === "number") {
+            expiresAt = payload.exp * 1000 // Convert Unix timestamp to milliseconds
+          }
+        }
+      } catch {
+        // If decoding fails, use default expiry
+      }
+
       return {
         type: "codex",
         accessToken: tokens.access_token,
@@ -188,7 +209,7 @@ export namespace Auth {
         accountId: tokens.account_id ?? idInfo?.chatgpt_account_id ?? undefined,
         email: idInfo?.email,
         planType: idInfo?.chatgpt_plan_type,
-        expiresAt: Date.now() - 60 * 1000,
+        expiresAt,
       }
     }
 

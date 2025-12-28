@@ -191,6 +191,25 @@ export function Sidebar(props: { sessionID: string; onHide?: () => void }) {
     return `${USAGE_BAR_FILLED.repeat(filled)}${USAGE_BAR_EMPTY.repeat(USAGE_BAR_SEGMENTS - filled)}`
   }
 
+  const formatTimeRemaining = (resetsAt: number | null | undefined) => {
+    if (!resetsAt) return ""
+    const now = Date.now()
+    const resetTime = resetsAt * 1000 // Convert Unix timestamp to milliseconds
+    const diff = resetTime - now
+
+    if (diff <= 0) return "resetting soon"
+
+    const totalMinutes = Math.floor(diff / 60000)
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    const days = Math.floor(hours / 24)
+    const hoursInDay = hours % 24
+
+    if (days > 0) return `${days}d ${hoursInDay}h left`
+    if (hours > 0) return `${hours}h ${minutes}m left`
+    return `${minutes}m left`
+  }
+
   createEffect(() => {
     if (!expanded.usage || !showUsageLimits()) return
     const provider = currentProvider()
@@ -539,17 +558,27 @@ export function Sidebar(props: { sessionID: string; onHide?: () => void }) {
                       </Show>
                       <Show when={usageData()?.limits?.primary}>
                         <text fg={theme.textMuted}>
-                          Primary: {usageData()!.limits!.primary!.usedPercent?.toFixed(0) ?? 0}% {usageBar(
+                          {currentProvider() === "codex" ? "5h cycle" : "Primary"}: {usageData()!.limits!.primary!.usedPercent?.toFixed(0) ?? 0}% {usageBar(
                             usageData()!.limits!.primary!.usedPercent,
                           )}
                         </text>
+                        <Show when={usageData()!.limits!.primary!.resetsAt}>
+                          <text fg={theme.textMuted}>
+                            {formatTimeRemaining(usageData()!.limits!.primary!.resetsAt)}
+                          </text>
+                        </Show>
                       </Show>
                       <Show when={usageData()?.limits?.secondary}>
                         <text fg={theme.textMuted}>
-                          Secondary: {usageData()!.limits!.secondary!.usedPercent?.toFixed(0) ?? 0}% {usageBar(
+                          {currentProvider() === "codex" ? "Weekly cycle" : "Secondary"}: {usageData()!.limits!.secondary!.usedPercent?.toFixed(0) ?? 0}% {usageBar(
                             usageData()!.limits!.secondary!.usedPercent,
                           )}
                         </text>
+                        <Show when={usageData()!.limits!.secondary!.resetsAt}>
+                          <text fg={theme.textMuted}>
+                            {formatTimeRemaining(usageData()!.limits!.secondary!.resetsAt)}
+                          </text>
+                        </Show>
                       </Show>
                       <Show when={usageData()?.credits?.unlimited}>
                         <text fg={theme.success}>Unlimited credits</text>

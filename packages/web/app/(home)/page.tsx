@@ -1,77 +1,82 @@
-import Image from "next/image"
 import { CopyButton } from "./copy-button"
 import { buttonVariants } from "@/components/ui/button"
 import { Book, Github } from "lucide-react"
 import Link from "next/link"
 
+function Highlight({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-bold before:-rotate-1 before:-z-10 relative z-10 inline-block px-[0.3rem] py-[0.2rem] font-mono text-2xl text-primary-foreground outline-none before:pointer-events-none before:absolute before:inset-0 before:rounded-xs before:bg-primary">
+      {children}
+    </span>
+  )
+}
+
 export default function HomePage() {
-  const installCommand = "curl -fsSL https://arcticli.com/install | bash"
+  const installCommandMacLinux = "curl -fsSL https://arcticli.com/install | bash"
+  const installCommandWindows = "irm https://arcticli.com/install.ps1 | iex"
 
   return (
-    <div className="relative min-h-screen w-full">
-      {/* Full Background Image */}
-      <div className="absolute inset-0 z-0">
-        <Image
-          src="/forest.png"
-          alt="Arctic Forest"
-          fill
-          className="object-cover"
-          priority
-          quality={100}
-          sizes="100vw"
-        />
-      </div>
+    <div className="h-screen w-full flex items-center overflow-hidden">
+      <div className="container max-w-6xl mx-auto px-6">
+        <div className="space-y-12 md:space-y-16">
 
-      {/* Content Overlay */}
-      <div className="relative z-10 flex min-h-screen w-full">
-        {/* Spacer for Left Side - allows image to be fully visible here */}
-        <div className="hidden lg:block lg:w-1/2" />
+          {/* Header */}
+          <div className="space-y-8 text-center">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+              Arctic
+            </h1>
 
-        {/* Right Side - Content */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-fd-background border-l border-fd-border/50 shadow-2xl">
-          <div className="max-w-xl mx-auto w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            
-            {/* Header */}
-            <div className="space-y-4">
-               <div className="relative w-16 h-16 mb-6">
-                  <Image src="/arctic-logo.png" alt="Arctic Logo" fill className="object-contain" />
-               </div>
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-fd-foreground">
-                Arctic
-              </h1>
-              <p className="text-xl md:text-2xl text-fd-muted-foreground">
-                The multi-provider AI coding CLI.
-              </p>
-            </div>
-
-            {/* Description */}
-            <p className="text-lg text-fd-muted-foreground/80 leading-relaxed">
-              Unified limits, sessions, and tools in your terminal. 
-              Switch seamlessly between Codex, Gemini, Anthropic, and GitHub Copilot 
-              without changing your workflow.
+            <p className="text-2xl md:text-3xl text-fd-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              <Highlight>Multi-provider</Highlight> terminal interface for AI coding.
             </p>
-
-            {/* Install Command */}
-            <div className="space-y-3">
-              <div className="text-sm font-medium text-fd-muted-foreground uppercase tracking-wider">
-                Get Started
-              </div>
-              <CopyButton command={installCommand} />
-            </div>
-
-            {/* Links */}
-            <div className="flex flex-wrap gap-4 pt-4 border-t border-fd-border/50">
-              <Link href="/docs" className={buttonVariants({ size: "lg" })}>
-                <Book className="size-4" />
-                Documentation
-              </Link>
-              <Link href="https://github.com/arctic-cli/cli" target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
-                <Github className="size-4" />
-                GitHub
-              </Link>
-            </div>
-
           </div>
+
+          {/* Description */}
+          <div className="max-w-4xl mx-auto space-y-6 text-lg md:text-xl text-center text-fd-muted-foreground/90">
+            <p>
+              Switch seamlessly between Codex, Gemini, Anthropic, and GitHub Copilot without changing your workflow.
+            </p>
+            <p>
+              Unified limits, sessions, and tools in your terminal.
+            </p>
+          </div>
+
+          {/* Install Commands */}
+          <div className="max-w-2xl mx-auto space-y-6">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold mb-6">Get Started</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm font-medium text-fd-muted-foreground mb-2">macOS / Linux</div>
+                <CopyButton command={installCommandMacLinux} />
+              </div>
+
+              <div>
+                <div className="text-sm font-medium text-fd-muted-foreground mb-2">Windows</div>
+                <CopyButton command={installCommandWindows} />
+              </div>
+            </div>
+          </div>
+
+          {/* Links */}
+          <div className="flex justify-center gap-4 pt-8">
+            <Link href="/docs" className={buttonVariants({ size: "lg" })}>
+              <Book className="size-4" />
+              Documentation
+            </Link>
+            <Link
+              href="https://github.com/arctic-cli/cli"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "secondary", size: "lg" })}
+            >
+              <Github className="size-4" />
+              GitHub
+            </Link>
+          </div>
+
         </div>
       </div>
     </div>

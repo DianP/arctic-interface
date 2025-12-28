@@ -148,15 +148,17 @@ export const ArcticCodexAuth: Plugin = async ({ client }: PluginInput) => {
 						init?: RequestInit,
 					): Promise<Response> {
 						// Step 1: Check and refresh token if needed
-						const currentAuth = await getAuth();
+						let currentAuth = await getAuth();
 						if (shouldRefreshToken(currentAuth)) {
 							const refreshResult = await refreshAndUpdateToken(
-								currentAuth,
+								getAuth,
 								client,
 							);
 							if (!refreshResult.success) {
 								return refreshResult.response;
 							}
+							// Reload auth after refresh to get updated tokens
+							currentAuth = refreshResult.auth;
 						}
 
 						// Step 2: Extract and rewrite URL for Codex backend
@@ -215,8 +217,9 @@ export const ArcticCodexAuth: Plugin = async ({ client }: PluginInput) => {
 						// Handle Unauthorized or Invalidated Token by refreshing and retrying once
 						if (shouldRetry) {
 							console.log(`[${PLUGIN_NAME}] Received 401 or token_invalidated, attempting token refresh...`);
+
 							const refreshResult = await refreshAndUpdateToken(
-								currentAuth,
+								getAuth,
 								client,
 							);
 
