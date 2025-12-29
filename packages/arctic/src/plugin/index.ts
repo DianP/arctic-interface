@@ -10,6 +10,7 @@ import { Flag } from "../flag/flag"
 import { ArcticCodexAuth } from "../auth/codex-oauth/index"
 import { ArcticGoogleAuth } from "../auth/google-oauth/index"
 import { ArcticAntigravityAuth } from "../auth/antigravity-oauth/index"
+import { ArcticAmpAuth } from "../auth/amp-auth/index"
 
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })
@@ -38,6 +39,7 @@ export namespace Plugin {
     hooks.push(await ArcticCodexAuth(input))
     hooks.push(await ArcticGoogleAuth(input))
     hooks.push(await ArcticAntigravityAuth(input))
+    hooks.push(await ArcticAmpAuth(input))
 
     for (let plugin of plugins) {
       log.info("loading plugin", { path: plugin })

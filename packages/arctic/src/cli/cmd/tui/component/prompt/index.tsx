@@ -1363,12 +1363,12 @@ export function Prompt(props: PromptProps) {
                     return
                   }
                   if (keybind.match("app_exit", e)) {
-                    e.preventDefault()
                     if (store.prompt.input === "") {
-                      await exit()
+                      // Let the app.tsx handler manage double-press exit when input is empty
                       return
                     } else {
-                      // Clear prompt on first Ctrl+C, exit on second
+                      // Clear prompt on first Ctrl+C when there's input
+                      e.preventDefault()
                       safeClearInput()
                       setStore("prompt", {
                         input: "",

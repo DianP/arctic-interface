@@ -124,6 +124,66 @@ export namespace Provider {
         options: {},
       }
     },
+    amp: async () => {
+      const raw = Env.get("AMP_URL") ?? "https://ampcode.com"
+      const base = raw.replace(/\/$/, "")
+
+      return {
+        autoload: false,
+        options: {
+          baseURL: `${base}/api/provider/openai/v1`,
+          // Add marker to change cache key so custom fetch is used
+          _ampTransformParams: true,
+          fetch: async (input: any, init?: BunFetchRequestInit) => {
+            let opts = init ?? {}
+            let url = input
+
+            if (input instanceof Request) {
+              const req = input as Request
+              url = req.url
+              opts = {
+                ...opts,
+                method: req.method,
+                headers: req.headers,
+                body: req.body ? await req.text() : undefined,
+                signal: opts.signal ?? req.signal,
+              }
+            }
+
+            // Transform max_tokens to max_completion_tokens for newer models
+            if (opts?.body) {
+              try {
+                let rawBody: string | undefined
+                if (typeof opts.body === "string") {
+                  rawBody = opts.body
+                } else if (opts.body instanceof Uint8Array) {
+                  rawBody = new TextDecoder().decode(opts.body)
+                } else if (opts.body instanceof ArrayBuffer) {
+                  rawBody = new TextDecoder().decode(new Uint8Array(opts.body))
+                } else if (opts.body instanceof ReadableStream) {
+                  rawBody = await new Response(opts.body).text()
+                }
+                if (rawBody) {
+                  const body = JSON.parse(rawBody)
+                  if (body.max_tokens !== undefined) {
+                    body.max_completion_tokens = body.max_tokens
+                    delete body.max_tokens
+                    opts.body = JSON.stringify(body)
+                  }
+                  if (body.temperature === 0) {
+                    delete body.temperature
+                    opts.body = JSON.stringify(body)
+                  }
+                }
+              } catch {
+                // If body parsing fails, just continue with original request
+              }
+            }
+            return fetch(url, opts)
+          },
+        },
+      }
+    },
     openai: async () => {
       return {
         autoload: false,
@@ -1893,7 +1953,21 @@ export namespace Provider {
       options["fetch"] = async (input: any, init?: BunFetchRequestInit) => {
         // Preserve custom fetch if it exists, wrap it with timeout logic
         const fetchFn = customFetch ?? fetch
-        const opts = init ?? {}
+        let opts = init ?? {}
+        let url = input
+
+        // If request is passed as Request, normalize so we can inspect/replace body
+        if (input instanceof Request) {
+          const req = input as Request
+          url = req.url
+          opts = {
+            ...opts,
+            method: req.method,
+            headers: req.headers,
+            body: req.body ? await req.text() : undefined,
+            signal: opts.signal ?? req.signal,
+          }
+        }
 
         if (options["timeout"] !== undefined && options["timeout"] !== null) {
           const signals: AbortSignal[] = []
@@ -1905,7 +1979,7 @@ export namespace Provider {
           opts.signal = combined
         }
 
-        return fetchFn(input, {
+        return fetchFn(url, {
           ...opts,
           // @ts-ignore see here: https://github.com/oven-sh/bun/issues/16682
           timeout: false,

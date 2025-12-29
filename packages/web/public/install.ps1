@@ -70,7 +70,7 @@ if ($RequestedTag) {
     $ForceNpmDownload = $true
 } elseif ($RequestedVersion) {
     if (Test-SemVer -Version $RequestedVersion) {
-        $Url = "https://github.com/arctic-cli/cli/releases/download/v$RequestedVersion/$FileName"
+        $Url = "https://github.com/arctic-cli/interface/releases/download/v$RequestedVersion/$FileName"
         $SpecificVersion = $RequestedVersion
     } else {
         $SpecificVersion = Get-NpmTagVersion -Tag $RequestedVersion

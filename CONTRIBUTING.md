@@ -9,7 +9,7 @@ Arctic is built with **Bun**. Please ensure you have [Bun 1.3+](https://bun.sh) 
 1.  **Fork and Clone** the repository:
 
     ```bash
-    git clone https://github.com/arctic-cli/cli.git arctic
+    git clone https://github.com/arctic-cli/interface.git arctic
     cd arctic
     ```
 

@@ -73,13 +73,77 @@ export namespace ModelsDev {
 
   export type Provider = z.infer<typeof Provider>
 
+  const AMP_DEFAULT_URL = "https://ampcode.com"
+  const AMP_BASE_URL = `${AMP_DEFAULT_URL}/api/provider/openai/v1`
+  const AMP_DEFAULT_LIMIT = { context: 128_000, output: 8_192 }
+  const AMP_DEFAULT_COST = { input: 0, output: 0 }
+  const AMP_DEFAULT_RELEASE_DATE = "2025-01-01"
+
+  const AMP_MODELS: Record<string, Model> = {
+    "gpt-5.1": {
+      id: "gpt-5.1",
+      name: "GPT-5.1",
+      family: "gpt",
+      release_date: AMP_DEFAULT_RELEASE_DATE,
+      attachment: false,
+      reasoning: true,
+      temperature: true,
+      tool_call: true,
+      limit: { context: 400_000, output: 128_000 },
+      modalities: { input: ["text", "image"], output: ["text"] },
+      cost: AMP_DEFAULT_COST,
+      options: {},
+    },
+    "gpt-5.2": {
+      id: "gpt-5.2",
+      name: "GPT-5.2",
+      family: "gpt",
+      release_date: AMP_DEFAULT_RELEASE_DATE,
+      attachment: false,
+      reasoning: true,
+      temperature: true,
+      tool_call: true,
+      limit: { context: 400_000, output: 128_000 },
+      modalities: { input: ["text", "image"], output: ["text"] },
+      cost: AMP_DEFAULT_COST,
+      options: {},
+    },
+    "gpt-5": {
+      id: "gpt-5",
+      name: "GPT-5",
+      family: "gpt",
+      release_date: AMP_DEFAULT_RELEASE_DATE,
+      attachment: false,
+      reasoning: true,
+      temperature: true,
+      tool_call: true,
+      limit: { context: 400_000, output: 128_000 },
+      modalities: { input: ["text", "image"], output: ["text"] },
+      cost: AMP_DEFAULT_COST,
+      options: {},
+    },
+  }
+
+  const LOCAL_PROVIDERS: Record<string, Provider> = {
+    amp: {
+      id: "amp",
+      name: "Amp",
+      api: AMP_BASE_URL,
+      env: ["AMP_API_KEY"],
+      npm: "@ai-sdk/openai-compatible",
+      models: AMP_MODELS,
+    },
+  }
+
   export async function get() {
     refresh()
     const file = Bun.file(filepath)
     const result = await file.json().catch(() => {})
-    if (result) return result as Record<string, Provider>
-    const json = await data()
-    return JSON.parse(json) as Record<string, Provider>
+    const base = result ? (result as Record<string, Provider>) : (JSON.parse(await data()) as Record<string, Provider>)
+    for (const [id, provider] of Object.entries(LOCAL_PROVIDERS)) {
+      if (!base[id]) base[id] = provider
+    }
+    return base
   }
 
   export async function refresh() {

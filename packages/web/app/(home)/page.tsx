@@ -1,7 +1,7 @@
-import { CopyButton } from "./copy-button"
 import { buttonVariants } from "@/components/ui/button"
 import { Book, Github } from "lucide-react"
 import Link from "next/link"
+import { CopyButton } from "./copy-button"
 
 function Highlight({ children }: { children: React.ReactNode }) {
   return (
@@ -19,12 +19,9 @@ export default function HomePage() {
     <div className="h-screen w-full flex items-center overflow-hidden">
       <div className="container max-w-6xl mx-auto px-6">
         <div className="space-y-12 md:space-y-16">
-
           {/* Header */}
           <div className="space-y-8 text-center">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-              Arctic
-            </h1>
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">Arctic</h1>
 
             <p className="text-2xl md:text-3xl text-fd-muted-foreground max-w-3xl mx-auto leading-relaxed">
               <Highlight>Multi-provider</Highlight> terminal interface for AI coding.
@@ -36,9 +33,7 @@ export default function HomePage() {
             <p>
               Switch seamlessly between Codex, Gemini, Anthropic, and GitHub Copilot without changing your workflow.
             </p>
-            <p>
-              Unified limits, sessions, and tools in your terminal.
-            </p>
+            <p>Unified limits, sessions, and tools in your terminal.</p>
           </div>
 
           {/* Install Commands */}
@@ -67,7 +62,7 @@ export default function HomePage() {
               Documentation
             </Link>
             <Link
-              href="https://github.com/arctic-cli/cli"
+              href="https://github.com/arctic-cli/interface"
               target="_blank"
               rel="noopener noreferrer"
               className={buttonVariants({ variant: "secondary", size: "lg" })}
@@ -76,7 +71,6 @@ export default function HomePage() {
               GitHub
             </Link>
           </div>
-
         </div>
       </div>
     </div>

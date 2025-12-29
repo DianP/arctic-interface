@@ -1,3 +1,4 @@
+import { Global } from "@/global"
 import { Installation } from "@/installation"
 import { Provider } from "@/provider/provider"
 import { Session as SessionApi } from "@/session"
@@ -22,7 +23,9 @@ import { Home } from "@tui/routes/home"
 import { Session } from "@tui/routes/session"
 import { DialogProvider, useDialog } from "@tui/ui/dialog"
 import { Clipboard } from "@tui/util/clipboard"
+import fs from "fs/promises"
 import open from "open"
+import path from "path"
 import { ErrorBoundary, Match, Show, Switch, batch, createEffect, createSignal, on, onMount, untrack } from "solid-js"
 import { PromptHistoryProvider } from "./component/prompt/history"
 import { ArgsProvider, useArgs, type Args } from "./context/args"
@@ -33,9 +36,6 @@ import { TuiEvent } from "./event"
 import { DialogAlert } from "./ui/dialog-alert"
 import { DialogHelp } from "./ui/dialog-help"
 import { ToastProvider, useToast } from "./ui/toast"
-import { Global } from "@/global"
-import fs from "fs/promises"
-import path from "path"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   // can't set raw mode if not a TTY
@@ -252,14 +252,8 @@ function App() {
         return
       }
 
-      const now = Date.now()
-      if (now - lastCtrlCPress < 500) {
-        exit()
-        return
-      }
-      lastCtrlCPress = now
-
       if (lastSelectionText) {
+        // When text is selected, just copy it without tracking Ctrl+C presses for exit
         event.preventDefault?.()
         // Use OSC 52 escape sequence for clipboard (works in modern terminals without external tools)
         const base64 = Buffer.from(lastSelectionText).toString("base64")
@@ -275,9 +269,18 @@ function App() {
           .catch(() => {
             toast.show({ message: "Failed to copy selection", variant: "error", duration: 3000 })
           })
+        // Reset the double-press timer when copying selected text
+        lastCtrlCPress = 0
       } else if (isCtrlC || isCopy) {
-        // If nothing selected and it was a Ctrl+C (or equivalent exit bind), exit
-        exit()
+        // If nothing selected and it was a Ctrl+C (or equivalent exit bind), track for double-press exit
+        const now = Date.now()
+        if (now - lastCtrlCPress < 500) {
+          // Second Ctrl+C within 500ms - exit
+          exit()
+          return
+        }
+        // First Ctrl+C - just record the time, don't exit
+        lastCtrlCPress = now
       }
     }
   })
@@ -688,7 +691,7 @@ function ErrorComponent(props: {
   })
   const [copied, setCopied] = createSignal(false)
 
-  const issueURL = new URL("https://github.com/arctic-cli/cli/issues/new?template=bug-report.yml")
+  const issueURL = new URL("https://github.com/arctic-cli/interface/issues/new?template=bug-report.yml")
 
   // Choose safe fallback colors per mode since theme context may not be available
   const isLight = props.mode === "light"

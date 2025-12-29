@@ -141,7 +141,7 @@ if [ -n "$requested_tag" ]; then
     force_npm_download=true
 elif [ -n "$requested_version" ]; then
     if is_semver "$requested_version"; then
-        url="https://github.com/arctic-cli/cli/releases/download/v${requested_version}/$filename"
+        url="https://github.com/arctic-cli/interface/releases/download/v${requested_version}/$filename"
         specific_version=$requested_version
     else
         specific_version=$(resolve_npm_tag_version "$requested_version")

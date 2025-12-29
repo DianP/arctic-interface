@@ -21,7 +21,6 @@ import {
   MacOSScrollAccel,
   RGBA,
   ScrollBoxRenderable,
-  TextAttributes,
   type ScrollAcceleration,
 } from "@opentui/core"
 import { useKeyboard, useRenderer, useTerminalDimensions, type BoxProps, type JSX } from "@opentui/solid"
@@ -1329,97 +1328,77 @@ function UserMessage(props: {
   onMouseUp: () => void
 }) {
   const ctx = use()
-  const local = useLocal()
   const text = createMemo(() => {
     const textParts = props.parts.flatMap((x) => (x.type === "text" ? [x as TextPart] : []))
     return textParts.find((part) => !part.synthetic) ?? textParts[0]
   })
   const files = createMemo(() => props.parts.flatMap((x) => (x.type === "file" ? [x] : [])))
-  const sync = useSync()
   const { theme, syntax } = useTheme()
-  const [hover, setHover] = createSignal(false)
   const queued = createMemo(() => props.pending && props.message.id > props.pending)
-  const color = createMemo(() => (queued() ? theme.accent : local.agent.color(props.message.agent)))
 
   const compaction = createMemo(() => props.parts.find((x) => x.type === "compaction"))
 
   return (
     <>
       <Show when={text()}>
-        <box
-          id={props.message.id}
-          border={["left"]}
-          borderColor={color()}
-          customBorderChars={SplitBorder.customBorderChars}
-          marginTop={props.index === 0 ? 0 : 1}
-        >
-          <box
-            onMouseOver={() => {
-              setHover(true)
-            }}
-            onMouseOut={() => {
-              setHover(false)
-            }}
-            onMouseUp={props.onMouseUp}
-            paddingTop={1}
-            paddingBottom={1}
-            paddingLeft={2}
-            backgroundColor={hover() ? theme.backgroundElement : theme.backgroundPanel}
-            flexShrink={0}
-          >
-            <Switch>
-              <Match when={ctx.userMessageMarkdown()}>
-                <code
-                  filetype="markdown"
-                  drawUnstyledText={false}
-                  streaming={false}
-                  syntaxStyle={syntax()}
-                  content={text()?.text ?? ""}
-                  conceal={ctx.conceal()}
-                  fg={theme.text}
-                />
-              </Match>
-              <Match when={!ctx.userMessageMarkdown()}>
-                <text fg={theme.text}>{text()?.text}</text>
-              </Match>
-            </Switch>
-          <Show when={files().length}>
-            <box flexDirection="row" paddingBottom={1} paddingTop={1} gap={1} flexWrap="wrap">
-              <For each={files()}>
-                {(file) => {
-                  const badge = MIME_BADGE[file.mime] ?? file.mime
-                  const bg = createMemo(() => {
-                    if (file.mime.startsWith("image/")) return theme.accent
-                    if (file.mime === "application/pdf") return theme.primary
-                    return theme.secondary
-                  })
-                  return (
-                    <text fg={theme.text}>
-                      <span style={{ bg: bg(), fg: theme.background }}> {badge} </span>
-                      <span style={{ bg: theme.backgroundElement, fg: theme.textMuted }}> {file.filename} </span>
-                    </text>
-                  )
-                }}
-              </For>
+        <box id={props.message.id} marginTop={props.index === 0 ? 0 : 1}>
+          <box onMouseUp={props.onMouseUp} paddingTop={0} paddingBottom={0} paddingLeft={1} flexShrink={0}>
+            <box flexDirection="row">
+              <text fg={theme.primary}>{"> "}</text>
+              <box paddingLeft={0} flexShrink={1} backgroundColor={theme.backgroundElement}>
+                <Switch>
+                  <Match when={ctx.userMessageMarkdown()}>
+                    <code
+                      filetype="markdown"
+                      drawUnstyledText={true}
+                      streaming={false}
+                      syntaxStyle={syntax()}
+                      content={text()?.text ?? ""}
+                      conceal={ctx.conceal()}
+                      fg={theme.background}
+                    />
+                  </Match>
+                  <Match when={!ctx.userMessageMarkdown()}>
+                    <text fg={theme.background}>{text()?.text}</text>
+                  </Match>
+                </Switch>
+              </box>
             </box>
-          </Show>
-          <text fg={theme.textMuted}>
-            {ctx.usernameVisible() ? `${sync.data.config.username ?? "You "}` : "You "}
-            <Show
-              when={queued()}
-              fallback={
-                <Show when={ctx.showTimestamps()}>
-                  <span style={{ fg: theme.textMuted }}>
-                    {ctx.usernameVisible() ? " · " : " "}
-                    {Locale.todayTimeOrDateTime(props.message.time.created)}
-                  </span>
-                </Show>
-              }
-            >
-              <span> </span>
-              <span style={{ bg: theme.accent, fg: theme.backgroundPanel, bold: true }}> QUEUED </span>
+            <Show when={files().length}>
+              <box flexDirection="row" paddingBottom={1} paddingTop={1} gap={1} flexWrap="wrap">
+                <For each={files()}>
+                  {(file) => {
+                    const badge = MIME_BADGE[file.mime] ?? file.mime
+                    const bg = createMemo(() => {
+                      if (file.mime.startsWith("image/")) return theme.accent
+                      if (file.mime === "application/pdf") return theme.primary
+                      return theme.secondary
+                    })
+                    return (
+                      <text fg={theme.text}>
+                        <span style={{ bg: bg(), fg: theme.background }}> {badge} </span>
+                        <span style={{ bg: theme.backgroundElement, fg: theme.textMuted }}> {file.filename} </span>
+                      </text>
+                    )
+                  }}
+                </For>
+              </box>
             </Show>
-          </text>
+            <text fg={theme.textMuted}>
+              <Show
+                when={queued()}
+                fallback={
+                  <Show when={ctx.showTimestamps()}>
+                    <span style={{ fg: theme.textMuted }}>
+                      {Locale.todayTimeOrDateTime(props.message.time.created)}
+                    </span>
+                  </Show>
+                }
+              >
+                <span> </span>
+                <span style={{ bg: theme.accent, fg: theme.backgroundPanel, bold: true }}> QUEUED </span>
+              </Show>
+            </text>
           </box>
         </box>
       </Show>
@@ -1617,7 +1596,6 @@ function formatUserText(value: string) {
     .map((line) => `> ${line}`)
     .join("\n")
 }
-
 
 function formatAssistantText(value: string, isFirstTextPart: boolean) {
   if (!value) return value
