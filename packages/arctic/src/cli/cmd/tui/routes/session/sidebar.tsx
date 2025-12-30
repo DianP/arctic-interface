@@ -178,6 +178,7 @@ export function Sidebar(props: { sessionID: string; onHide?: () => void }) {
     "google",
     "kimi-for-coding",
     "github-copilot",
+    "antigravity",
   ]
 
   const showUsageLimits = createMemo(() => {
@@ -223,14 +224,14 @@ export function Sidebar(props: { sessionID: string; onHide?: () => void }) {
 
     const meta = usageMeta()
     const isSameProvider = meta?.providerID === provider
-    
+
     // Refresh if:
     // - Provider changed
     // - Data is stale (>60s old)
     // - A new message was completed after our last fetch
     const isStale = meta ? Date.now() - meta.fetchedAt > 60_000 : false
     const hasNewMessage = lastCompletedTime && meta ? lastCompletedTime > meta.fetchedAt : false
-    
+
     if (isSameProvider && !isStale && !hasNewMessage) return
 
     setUsageLoading(true)

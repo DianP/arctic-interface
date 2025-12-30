@@ -790,6 +790,16 @@ export function Session() {
       },
     },
     {
+      title: kv.get("copy_button_enabled", true) ? "Hide copy button" : "Show copy button",
+      value: "session.toggle.copy_button",
+      category: "Session",
+      onSelect: (dialog) => {
+        const current = kv.get("copy_button_enabled", true)
+        kv.set("copy_button_enabled", !current)
+        dialog.clear()
+      },
+    },
+    {
       title: "Toggle session scrollbar",
       value: "session.toggle.scrollbar",
       keybind: "scrollbar_toggle",

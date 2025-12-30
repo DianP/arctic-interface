@@ -197,6 +197,7 @@ function App() {
   const keybind = useKeybind()
 
   const [showCopyButton, setShowCopyButton] = createSignal(false)
+  const copyButtonEnabled = () => kv.get("copy_button_enabled", true)
   const [copyButtonPos, setCopyButtonPos] = createSignal({ x: 0, y: 0 })
   let lastSelectionText = ""
   let lastMousePos = { x: 0, y: 0 }
@@ -691,7 +692,7 @@ function App() {
         </Match>
       </Switch>
 
-      <Show when={showCopyButton()}>
+      <Show when={showCopyButton() && copyButtonEnabled()}>
         <box
           position="absolute"
           left={copyButtonPos().x + 2}
