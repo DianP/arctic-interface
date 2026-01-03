@@ -1,0 +1,16 @@
+{
+  "title": "CLI Reference",
+  "pages": [
+    "index",
+    "usage",
+    "commands",
+    "sessions",
+    "config",
+    "agents",
+    "tools",
+    "permissions",
+    "mcp",
+    "benchmark",
+    "debug"
+  ]
+}

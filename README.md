@@ -1,62 +1,42 @@
 # Arctic
 
-Multi-provider terminal interface for AI coding.
+**One interface for every AI coding plan.**  
+See your limits. Switch providers instantly. Stay in control.
 
-![Arctic Demo](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExcm5yMjgzMnR0MWZucWI1bDU5ZDFlZzNwcm0wN2s3YTd2NTIzcGdpeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ulQQdgqAFI5sv9ONjs/giphy.gif)
+![Arctic Demo](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGFkazZsa2I2YnM4c3R0Z3duMjQ4cTQzMTZxc2hkZ2xxdDAzMnh2YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5iJOom0R1fgX7xKuCU/giphy.gif)
 
-## Why Arctic?
-
-Arctic exists because existing tools weren't cutting it. I needed a way to connect multiple providers like Codex, Anthropic, Gemini, Z.ai and track usage limits in one place, but nothing offered that seamless integration.
-
-I also wanted to benchmark models side-by-side (e.g., comparing Gemini vs. Claude on complex backend tasks). Other CLIs couldn't do this, and alternative GUI solutions felt buggy or bloated.
-
-Frustrated by forced clipboard copying and rigid interfaces, I forked OpenCode, stripped away the unnecessary features, and simplified it into a custom TUI focused on what matters: **unified limits, multi-provider benchmarking, and total workflow control.**
-
-## Installation
-
-**macOS / Linux**
+## Get Started
 
 ```bash
 curl -fsSL https://usearctic.sh/install | bash
-```
-
-**Windows**
-
-```powershell
-irm https://usearctic.sh/install.ps1 | iex
-```
-
-## Supported Providers
-
-**Coding Plan:**
-
-- Anthropic (Claude Code)
-- Codex
-- Google (Gemini CLI)
-- Antigravity
-- Z.AI
-- Github Copilot
-- Kimi Coding
-- Amp Code
-
-**API:**
-
-- OpenAI
-- Anthropic
-- Openrouter
-- Chutes
-- Perplexity
-- Z.AI
-- Ollama (local models)
-- and way more...
-
-## Quick Start
-
-Start the interface:
-
-```bash
 arctic
 ```
+
+That's it. You're in.
+
+## Why Arctic?
+
+**Never hit a rate limit unexpectedly again.**
+
+Arctic shows you real-time usage for every AI coding plan you use: Claude Code, Codex, Gemini, Antigravity, and more. Track requests, tokens, and quotas. All in one place.
+
+**Switch providers without losing your context.**
+
+One conversation. Multiple models. Compare Claude vs Gemini on the same task. Switch instantly without starting over.
+
+**Your code stays yours.**
+
+Arctic runs on your machine. No proxies. No data collection. Direct connection to your AI provider.
+
+## Works With Everything
+
+Arctic supports every major AI coding plan and API:
+
+**Coding Plans:** Claude Code • Codex • Gemini CLI • Antigravity • GitHub Copilot • Z.AI • Kimi • Amp Code
+
+**API Providers:** OpenAI • Anthropic • Google • Perplexity • Openrouter • Ollama • and more
+
+[View all providers →](https://usearctic.sh/docs/providers)
 
 ## Development
 
@@ -67,8 +47,10 @@ bun dev
 
 ## Contributing
 
-Arctic is a brand new project and we'd love your input! Whether you have ideas, want to report issues, or submit PRs - all contributions are very welcome.
+Arctic is open source and we'd love your input. Whether you have ideas, want to report issues, or submit PRs—all contributions are welcome.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
-[Documentation](https://usearctic.sh/docs) • [License](LICENSE)
+## Learn More
+
+[Documentation](https://usearctic.sh/docs) • [GitHub](https://github.com/arctic-cli/interface) • [License](LICENSE)

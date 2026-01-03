@@ -33,17 +33,22 @@ mkdir -p ~/.local/bin
 curl -fsSL https://usearctic.sh/install | bash
 ```
 
-### Windows PowerShell execution policy error
+### Clipboard not working on Linux
 
-If you get an error about execution policy:
+If copy/paste doesn't work in Arctic on Linux (Ubuntu, Debian, etc.):
 
-```powershell
-# Set execution policy for current session
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+```bash
+# Install xclip for clipboard support
+sudo apt install xclip
 
-# Then run install again
-irm https://usearctic.sh/install.ps1 | iex
+# For Fedora/RHEL
+sudo dnf install xclip
+
+# For Arch
+sudo pacman -S xclip
 ```
+
+Restart Arctic after installing.
 
 ## Authentication Issues
 
@@ -112,16 +117,16 @@ arctic debug config
 # Edit ~/.config/arctic/arctic.json and remove the "keybinds" section
 ```
 
-### Mouse selection copies everything
+### Copy/paste issues
 
-By default, mouse selection copies in Arctic. To disable or customize:
+If you're having trouble copying text from Arctic:
 
-```json
-{
-  "selection": {
-    "mouse": false
-  }
-}
+```bash
+# Use the standard copy shortcut
+# Ctrl+C (Linux) or Cmd+C (macOS) after selecting text
+
+# On Linux, ensure xclip is installed
+sudo apt install xclip
 ```
 
 ## Session Issues
