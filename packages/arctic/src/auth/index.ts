@@ -58,7 +58,19 @@ export namespace Auth {
     })
     .meta({ ref: "OllamaAuth" })
 
-  export const Info = z.discriminatedUnion("type", [Oauth, Api, WellKnown, Codex, Github, Ollama]).meta({ ref: "Auth" })
+  export const Alibaba = z
+    .object({
+      type: z.literal("alibaba"),
+      access: z.string(),
+      refresh: z.string(),
+      expires: z.number(),
+      enterpriseUrl: z.string().optional(),
+    })
+    .meta({ ref: "AlibabaAuth" })
+
+  export const Info = z
+    .discriminatedUnion("type", [Oauth, Api, WellKnown, Codex, Github, Ollama, Alibaba])
+    .meta({ ref: "Auth" })
   export type Info = z.infer<typeof Info>
 
   const filepath = path.join(Global.Path.data, "auth.json")

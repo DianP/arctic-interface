@@ -9,7 +9,7 @@ export interface PluginConfig {
 }
 
 /**
- * User configuration structure from opencode.json
+ * User configuration structure from arctic.json
  */
 export interface UserConfig {
   global: ConfigOptions

@@ -133,6 +133,42 @@ export namespace ModelsDev {
       npm: "@ai-sdk/openai-compatible",
       models: AMP_MODELS,
     },
+    alibaba: {
+      id: "alibaba",
+      name: "Alibaba (Qwen Code)",
+      env: [],
+      npm: "@ai-sdk/openai-compatible",
+      models: {
+        "coder-model": {
+          id: "coder-model",
+          name: "Qwen Coder (mainline)",
+          release_date: "2025-01-01",
+          attachment: true,
+          reasoning: true,
+          temperature: true,
+          tool_call: true,
+          limit: { context: 1000000, output: 64000 },
+          cost: { input: 0, output: 0 },
+          options: {},
+        },
+        "vision-model": {
+          id: "vision-model",
+          name: "Qwen Vision (mainline)",
+          release_date: "2025-01-01",
+          attachment: true,
+          reasoning: true,
+          temperature: true,
+          tool_call: true,
+          limit: { context: 1000000, output: 8192 },
+          modalities: {
+            input: ["text", "image", "audio", "video", "pdf"],
+            output: ["text", "image"],
+          },
+          cost: { input: 0, output: 0 },
+          options: {},
+        },
+      },
+    },
   }
 
   export async function get() {
@@ -141,7 +177,12 @@ export namespace ModelsDev {
     const result = await file.json().catch(() => {})
     const base = result ? (result as Record<string, Provider>) : (JSON.parse(await data()) as Record<string, Provider>)
     for (const [id, provider] of Object.entries(LOCAL_PROVIDERS)) {
-      if (!base[id]) base[id] = provider
+      if (!base[id]) {
+        base[id] = provider
+      } else if (id === "alibaba") {
+        // Override alibaba models with local definitions (only mainline models)
+        base[id] = provider
+      }
     }
 
     // Add Antigravity provider locally since it's not in models.dev yet

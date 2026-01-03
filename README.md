@@ -47,7 +47,7 @@ bun dev
 
 ## Contributing
 
-Arctic is open source and we'd love your input. Whether you have ideas, want to report issues, or submit PRs—all contributions are welcome.
+Arctic is open source and we'd love your input. Whether you have ideas, want to report issues, or submit PRs, all contributions are welcome.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 

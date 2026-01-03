@@ -1,52 +1,52 @@
-const ANTIGRAVITY_PREVIEW_LINK = "https://goo.gle/enable-preview-features"; // TODO: Update to Antigravity link if available
+const ANTIGRAVITY_PREVIEW_LINK = "https://goo.gle/enable-preview-features" // TODO: Update to Antigravity link if available
 
 export interface AntigravityApiError {
-  code?: number;
-  message?: string;
-  status?: string;
-  [key: string]: unknown;
+  code?: number
+  message?: string
+  status?: string
+  [key: string]: unknown
 }
 
 /**
  * Minimal representation of Antigravity API responses we touch.
  */
 export interface AntigravityApiBody {
-  response?: unknown;
-  error?: AntigravityApiError;
-  [key: string]: unknown;
+  response?: unknown
+  error?: AntigravityApiError
+  [key: string]: unknown
 }
 
 /**
  * Usage metadata exposed by Antigravity responses. Fields are optional to reflect partial payloads.
  */
 export interface AntigravityUsageMetadata {
-  totalTokenCount?: number;
-  promptTokenCount?: number;
-  candidatesTokenCount?: number;
-  cachedContentTokenCount?: number;
+  totalTokenCount?: number
+  promptTokenCount?: number
+  candidatesTokenCount?: number
+  cachedContentTokenCount?: number
 }
 
 /**
  * Normalized thinking configuration accepted by Antigravity.
  */
 export interface ThinkingConfig {
-  thinkingBudget?: number;
-  includeThoughts?: boolean;
+  thinkingBudget?: number
+  includeThoughts?: boolean
 }
 
 /**
  * Default token budget for thinking/reasoning. 16000 tokens provides sufficient
  * space for complex reasoning while staying within typical model limits.
  */
-export const DEFAULT_THINKING_BUDGET = 16000;
+export const DEFAULT_THINKING_BUDGET = 16000
 
 /**
  * Checks if a model name indicates thinking/reasoning capability.
  * Models with "thinking", "gemini-3", or "opus" in their name support extended thinking.
  */
 export function isThinkingCapableModel(modelName: string): boolean {
-  const lowerModel = modelName.toLowerCase();
-  return lowerModel.includes("thinking") || lowerModel.includes("gemini-3") || lowerModel.includes("opus");
+  const lowerModel = modelName.toLowerCase()
+  return lowerModel.includes("thinking") || lowerModel.includes("gemini-3") || lowerModel.includes("opus")
 }
 
 /**
@@ -58,29 +58,30 @@ export function extractThinkingConfig(
   rawGenerationConfig: Record<string, unknown> | undefined,
   extraBody: Record<string, unknown> | undefined,
 ): ThinkingConfig | undefined {
-  const thinkingConfig = rawGenerationConfig?.thinkingConfig ?? extraBody?.thinkingConfig ?? requestPayload.thinkingConfig;
+  const thinkingConfig =
+    rawGenerationConfig?.thinkingConfig ?? extraBody?.thinkingConfig ?? requestPayload.thinkingConfig
 
   if (thinkingConfig && typeof thinkingConfig === "object") {
-    const config = thinkingConfig as Record<string, unknown>;
+    const config = thinkingConfig as Record<string, unknown>
     return {
       includeThoughts: Boolean(config.includeThoughts),
       thinkingBudget: typeof config.thinkingBudget === "number" ? config.thinkingBudget : DEFAULT_THINKING_BUDGET,
-    };
+    }
   }
 
   // Convert Anthropic-style "thinking" option: { type: "enabled", budgetTokens: N }
-  const anthropicThinking = extraBody?.thinking ?? requestPayload.thinking;
+  const anthropicThinking = extraBody?.thinking ?? requestPayload.thinking
   if (anthropicThinking && typeof anthropicThinking === "object") {
-    const thinking = anthropicThinking as Record<string, unknown>;
+    const thinking = anthropicThinking as Record<string, unknown>
     if (thinking.type === "enabled" || thinking.budgetTokens) {
       return {
         includeThoughts: true,
         thinkingBudget: typeof thinking.budgetTokens === "number" ? thinking.budgetTokens : DEFAULT_THINKING_BUDGET,
-      };
+      }
     }
   }
 
-  return undefined;
+  return undefined
 }
 
 /**
@@ -97,10 +98,10 @@ export function resolveThinkingConfig(
   // For thinking-capable models (including Claude thinking models), enable thinking by default
   // The signature validation/restoration is handled by filterUnsignedThinkingBlocks
   if (isThinkingModel && !userConfig) {
-    return { includeThoughts: true, thinkingBudget: DEFAULT_THINKING_BUDGET };
+    return { includeThoughts: true, thinkingBudget: DEFAULT_THINKING_BUDGET }
   }
 
-  return userConfig;
+  return userConfig
 }
 
 /**
@@ -113,7 +114,7 @@ function isThinkingPart(part: Record<string, unknown>): boolean {
     part.type === "reasoning" ||
     part.thinking !== undefined ||
     part.thought === true
-  );
+  )
 }
 
 /**
@@ -121,7 +122,7 @@ function isThinkingPart(part: Record<string, unknown>): boolean {
  * Used to detect foreign thinking blocks that might have unknown type values.
  */
 function hasSignatureField(part: Record<string, unknown>): boolean {
-  return part.signature !== undefined || part.thoughtSignature !== undefined;
+  return part.signature !== undefined || part.thoughtSignature !== undefined
 }
 
 /**
@@ -143,7 +144,7 @@ function isToolBlock(part: Record<string, unknown>): boolean {
     part.toolUse !== undefined ||
     part.functionCall !== undefined ||
     part.functionResponse !== undefined
-  );
+  )
 }
 
 /**
@@ -156,21 +157,21 @@ function removeTrailingThinkingBlocks(
   sessionId?: string,
   getCachedSignatureFn?: (sessionId: string, text: string) => string | undefined,
 ): any[] {
-  const result = [...contentArray];
+  const result = [...contentArray]
 
   while (result.length > 0 && isThinkingPart(result[result.length - 1])) {
-    const part = result[result.length - 1];
+    const part = result[result.length - 1]
     const isValid =
       sessionId && getCachedSignatureFn
         ? isOurCachedSignature(part as Record<string, unknown>, sessionId, getCachedSignatureFn)
-        : hasValidSignature(part as Record<string, unknown>);
+        : hasValidSignature(part as Record<string, unknown>)
     if (isValid) {
-      break;
+      break
     }
-    result.pop();
+    result.pop()
   }
 
-  return result;
+  return result
 }
 
 /**
@@ -178,16 +179,16 @@ function removeTrailingThinkingBlocks(
  * A valid signature is a non-empty string with at least 50 characters.
  */
 function hasValidSignature(part: Record<string, unknown>): boolean {
-  const signature = part.thought === true ? part.thoughtSignature : part.signature;
-  return typeof signature === "string" && signature.length >= 50;
+  const signature = part.thought === true ? part.thoughtSignature : part.signature
+  return typeof signature === "string" && signature.length >= 50
 }
 
 /**
  * Gets the signature from a thinking part, if present.
  */
 function getSignature(part: Record<string, unknown>): string | undefined {
-  const signature = part.thought === true ? part.thoughtSignature : part.signature;
-  return typeof signature === "string" ? signature : undefined;
+  const signature = part.thought === true ? part.thoughtSignature : part.signature
+  return typeof signature === "string" ? signature : undefined
 }
 
 /**
@@ -201,41 +202,41 @@ function isOurCachedSignature(
   getCachedSignatureFn: ((sessionId: string, text: string) => string | undefined) | undefined,
 ): boolean {
   if (!sessionId || !getCachedSignatureFn) {
-    return false;
+    return false
   }
 
-  const text = getThinkingText(part);
+  const text = getThinkingText(part)
   if (!text) {
-    return false;
+    return false
   }
 
-  const partSignature = getSignature(part);
+  const partSignature = getSignature(part)
   if (!partSignature) {
-    return false;
+    return false
   }
 
-  const cachedSignature = getCachedSignatureFn(sessionId, text);
-  return cachedSignature === partSignature;
+  const cachedSignature = getCachedSignatureFn(sessionId, text)
+  return cachedSignature === partSignature
 }
 
 /**
  * Gets the text content from a thinking part.
  */
 function getThinkingText(part: Record<string, unknown>): string {
-  if (typeof part.text === "string") return part.text;
-  if (typeof part.thinking === "string") return part.thinking;
+  if (typeof part.text === "string") return part.text
+  if (typeof part.thinking === "string") return part.thinking
 
   if (part.text && typeof part.text === "object") {
-    const maybeText = (part.text as any).text;
-    if (typeof maybeText === "string") return maybeText;
+    const maybeText = (part.text as any).text
+    if (typeof maybeText === "string") return maybeText
   }
 
   if (part.thinking && typeof part.thinking === "object") {
-    const maybeText = (part.thinking as any).text ?? (part.thinking as any).thinking;
-    if (typeof maybeText === "string") return maybeText;
+    const maybeText = (part.thinking as any).text ?? (part.thinking as any).thinking
+    if (typeof maybeText === "string") return maybeText
   }
 
-  return "";
+  return ""
 }
 
 /**
@@ -243,16 +244,16 @@ function getThinkingText(part: Record<string, unknown>): string {
  * These fields can be injected by SDKs, but Claude rejects them inside thinking blocks.
  */
 function stripCacheControlRecursively(obj: unknown): unknown {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map((item) => stripCacheControlRecursively(item));
+  if (obj === null || obj === undefined) return obj
+  if (typeof obj !== "object") return obj
+  if (Array.isArray(obj)) return obj.map((item) => stripCacheControlRecursively(item))
 
-  const result: Record<string, unknown> = {};
+  const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    if (key === "cache_control" || key === "providerOptions") continue;
-    result[key] = stripCacheControlRecursively(value);
+    if (key === "cache_control" || key === "providerOptions") continue
+    result[key] = stripCacheControlRecursively(value)
   }
-  return result;
+  return result
 }
 
 /**
@@ -262,57 +263,57 @@ function stripCacheControlRecursively(obj: unknown): unknown {
 function sanitizeThinkingPart(part: Record<string, unknown>): Record<string, unknown> {
   // Gemini-style thought blocks: { thought: true, text, thoughtSignature }
   if (part.thought === true) {
-    const sanitized: Record<string, unknown> = { thought: true };
+    const sanitized: Record<string, unknown> = { thought: true }
 
     if (part.text !== undefined) {
       if (typeof part.text === "object" && part.text !== null) {
-        const maybeText = (part.text as any).text;
-        sanitized.text = typeof maybeText === "string" ? maybeText : part.text;
+        const maybeText = (part.text as any).text
+        sanitized.text = typeof maybeText === "string" ? maybeText : part.text
       } else {
-        sanitized.text = part.text;
+        sanitized.text = part.text
       }
     }
 
-    if (part.thoughtSignature !== undefined) sanitized.thoughtSignature = part.thoughtSignature;
-    return sanitized;
+    if (part.thoughtSignature !== undefined) sanitized.thoughtSignature = part.thoughtSignature
+    return sanitized
   }
 
   // Anthropic-style thinking/redacted_thinking blocks: { type: "thinking"|"redacted_thinking", thinking, signature }
   if (part.type === "thinking" || part.type === "redacted_thinking" || part.thinking !== undefined) {
     const sanitized: Record<string, unknown> = {
       type: part.type === "redacted_thinking" ? "redacted_thinking" : "thinking",
-    };
-
-    let thinkingContent: unknown = part.thinking ?? part.text;
-    if (thinkingContent !== undefined && typeof thinkingContent === "object" && thinkingContent !== null) {
-      const maybeText = (thinkingContent as any).text ?? (thinkingContent as any).thinking;
-      thinkingContent = typeof maybeText === "string" ? maybeText : "";
     }
 
-    if (thinkingContent !== undefined) sanitized.thinking = thinkingContent;
-    if (part.signature !== undefined) sanitized.signature = part.signature;
-    return sanitized;
+    let thinkingContent: unknown = part.thinking ?? part.text
+    if (thinkingContent !== undefined && typeof thinkingContent === "object" && thinkingContent !== null) {
+      const maybeText = (thinkingContent as any).text ?? (thinkingContent as any).thinking
+      thinkingContent = typeof maybeText === "string" ? maybeText : ""
+    }
+
+    if (thinkingContent !== undefined) sanitized.thinking = thinkingContent
+    if (part.signature !== undefined) sanitized.signature = part.signature
+    return sanitized
   }
 
-  // Reasoning blocks (OpenCode format): { type: "reasoning", text, signature }
+  // Reasoning blocks (Arctic format): { type: "reasoning", text, signature }
   if (part.type === "reasoning") {
-    const sanitized: Record<string, unknown> = { type: "reasoning" };
+    const sanitized: Record<string, unknown> = { type: "reasoning" }
 
     if (part.text !== undefined) {
       if (typeof part.text === "object" && part.text !== null) {
-        const maybeText = (part.text as any).text;
-        sanitized.text = typeof maybeText === "string" ? maybeText : part.text;
+        const maybeText = (part.text as any).text
+        sanitized.text = typeof maybeText === "string" ? maybeText : part.text
       } else {
-        sanitized.text = part.text;
+        sanitized.text = part.text
       }
     }
 
-    if (part.signature !== undefined) sanitized.signature = part.signature;
-    return sanitized;
+    if (part.signature !== undefined) sanitized.signature = part.signature
+    return sanitized
   }
 
   // Fallback: strip cache_control recursively.
-  return stripCacheControlRecursively(part) as Record<string, unknown>;
+  return stripCacheControlRecursively(part) as Record<string, unknown>
 }
 
 function filterContentArray(
@@ -320,51 +321,51 @@ function filterContentArray(
   sessionId?: string,
   getCachedSignatureFn?: (sessionId: string, text: string) => string | undefined,
 ): any[] {
-  const filtered: any[] = [];
+  const filtered: any[] = []
 
   for (const item of contentArray) {
     if (!item || typeof item !== "object") {
-      filtered.push(item);
-      continue;
+      filtered.push(item)
+      continue
     }
 
     if (isToolBlock(item)) {
-      filtered.push(item);
-      continue;
+      filtered.push(item)
+      continue
     }
 
-    const isThinking = isThinkingPart(item);
-    const hasSignature = hasSignatureField(item);
+    const isThinking = isThinkingPart(item)
+    const hasSignature = hasSignatureField(item)
 
     if (!isThinking && !hasSignature) {
-      filtered.push(item);
-      continue;
+      filtered.push(item)
+      continue
     }
 
     if (isOurCachedSignature(item, sessionId, getCachedSignatureFn)) {
-      filtered.push(sanitizeThinkingPart(item));
-      continue;
+      filtered.push(sanitizeThinkingPart(item))
+      continue
     }
 
     if (sessionId && getCachedSignatureFn) {
-      const text = getThinkingText(item);
+      const text = getThinkingText(item)
       if (text) {
-        const cachedSignature = getCachedSignatureFn(sessionId, text);
+        const cachedSignature = getCachedSignatureFn(sessionId, text)
         if (cachedSignature && cachedSignature.length >= 50) {
-          const restoredPart = { ...item };
+          const restoredPart = { ...item }
           if ((item as any).thought === true) {
-            (restoredPart as any).thoughtSignature = cachedSignature;
+            ;(restoredPart as any).thoughtSignature = cachedSignature
           } else {
-            (restoredPart as any).signature = cachedSignature;
+            ;(restoredPart as any).signature = cachedSignature
           }
-          filtered.push(sanitizeThinkingPart(restoredPart as Record<string, unknown>));
-          continue;
+          filtered.push(sanitizeThinkingPart(restoredPart as Record<string, unknown>))
+          continue
         }
       }
     }
   }
 
-  return filtered;
+  return filtered
 }
 
 /**
@@ -382,37 +383,37 @@ export function filterUnsignedThinkingBlocks(
 ): any[] {
   return contents.map((content: any) => {
     if (!content || typeof content !== "object") {
-      return content;
+      return content
     }
 
     // Gemini format: contents[].parts[]
     if (Array.isArray((content as any).parts)) {
-      const filteredParts = filterContentArray((content as any).parts, sessionId, getCachedSignatureFn);
+      const filteredParts = filterContentArray((content as any).parts, sessionId, getCachedSignatureFn)
 
       // Remove trailing thinking blocks for model role (assistant equivalent in Gemini)
       const trimmedParts =
         (content as any).role === "model"
           ? removeTrailingThinkingBlocks(filteredParts, sessionId, getCachedSignatureFn)
-          : filteredParts;
+          : filteredParts
 
-      return { ...content, parts: trimmedParts };
+      return { ...content, parts: trimmedParts }
     }
 
     // Some Anthropic-style payloads may appear here as contents[].content[]
     if (Array.isArray((content as any).content)) {
-      const isAssistantRole = (content as any).role === "assistant";
-      const filteredContent = filterContentArray((content as any).content, sessionId, getCachedSignatureFn);
+      const isAssistantRole = (content as any).role === "assistant"
+      const filteredContent = filterContentArray((content as any).content, sessionId, getCachedSignatureFn)
 
       // Claude API requires assistant messages don't end with thinking blocks
       const trimmedContent = isAssistantRole
         ? removeTrailingThinkingBlocks(filteredContent, sessionId, getCachedSignatureFn)
-        : filteredContent;
+        : filteredContent
 
-      return { ...content, content: trimmedContent };
+      return { ...content, content: trimmedContent }
     }
 
-    return content;
-  });
+    return content
+  })
 }
 
 /**
@@ -425,23 +426,23 @@ export function filterMessagesThinkingBlocks(
 ): any[] {
   return messages.map((message: any) => {
     if (!message || typeof message !== "object") {
-      return message;
+      return message
     }
 
     if (Array.isArray((message as any).content)) {
-      const isAssistantRole = (message as any).role === "assistant";
-      const filteredContent = filterContentArray((message as any).content, sessionId, getCachedSignatureFn);
+      const isAssistantRole = (message as any).role === "assistant"
+      const filteredContent = filterContentArray((message as any).content, sessionId, getCachedSignatureFn)
 
       // Claude API requires assistant messages don't end with thinking blocks
       const trimmedContent = isAssistantRole
         ? removeTrailingThinkingBlocks(filteredContent, sessionId, getCachedSignatureFn)
-        : filteredContent;
+        : filteredContent
 
-      return { ...message, content: trimmedContent };
+      return { ...message, content: trimmedContent }
     }
 
-    return message;
-  });
+    return message
+  })
 }
 
 export function deepFilterThinkingBlocks(
@@ -449,39 +450,39 @@ export function deepFilterThinkingBlocks(
   sessionId?: string,
   getCachedSignatureFn?: (sessionId: string, text: string) => string | undefined,
 ): unknown {
-  const visited = new WeakSet<object>();
+  const visited = new WeakSet<object>()
 
   const walk = (value: unknown): void => {
     if (!value || typeof value !== "object") {
-      return;
+      return
     }
 
     if (visited.has(value as object)) {
-      return;
+      return
     }
 
-    visited.add(value as object);
+    visited.add(value as object)
 
     if (Array.isArray(value)) {
-      value.forEach((item) => walk(item));
-      return;
+      value.forEach((item) => walk(item))
+      return
     }
 
-    const obj = value as Record<string, unknown>;
+    const obj = value as Record<string, unknown>
 
     if (Array.isArray(obj.contents)) {
-      obj.contents = filterUnsignedThinkingBlocks(obj.contents as any[], sessionId, getCachedSignatureFn);
+      obj.contents = filterUnsignedThinkingBlocks(obj.contents as any[], sessionId, getCachedSignatureFn)
     }
 
     if (Array.isArray(obj.messages)) {
-      obj.messages = filterMessagesThinkingBlocks(obj.messages as any[], sessionId, getCachedSignatureFn);
+      obj.messages = filterMessagesThinkingBlocks(obj.messages as any[], sessionId, getCachedSignatureFn)
     }
 
-    Object.keys(obj).forEach((key) => walk(obj[key]));
-  };
+    Object.keys(obj).forEach((key) => walk(obj[key]))
+  }
 
-  walk(payload);
-  return payload;
+  walk(payload)
+  return payload
 }
 
 /**
@@ -491,93 +492,93 @@ export function deepFilterThinkingBlocks(
  */
 function transformGeminiCandidate(candidate: any): any {
   if (!candidate || typeof candidate !== "object") {
-    return candidate;
+    return candidate
   }
 
-  const content = candidate.content;
+  const content = candidate.content
   if (!content || typeof content !== "object" || !Array.isArray(content.parts)) {
-    return candidate;
+    return candidate
   }
 
-  const thinkingTexts: string[] = [];
+  const thinkingTexts: string[] = []
   const transformedParts = content.parts.map((part: any) => {
     if (!part || typeof part !== "object") {
-      return part;
+      return part
     }
 
     // Handle Gemini-style: thought: true
     if (part.thought === true) {
-      thinkingTexts.push(part.text || "");
-      return { ...part, type: "reasoning" };
+      thinkingTexts.push(part.text || "")
+      return { ...part, type: "reasoning" }
     }
 
     // Handle Anthropic-style in candidates: type: "thinking"
     if (part.type === "thinking") {
-      const thinkingText = part.thinking || part.text || "";
-      thinkingTexts.push(thinkingText);
+      const thinkingText = part.thinking || part.text || ""
+      thinkingTexts.push(thinkingText)
       return {
         ...part,
         type: "reasoning",
         text: thinkingText,
         thought: true,
-      };
+      }
     }
 
-    return part;
-  });
+    return part
+  })
 
   return {
     ...candidate,
     content: { ...content, parts: transformedParts },
     ...(thinkingTexts.length > 0 ? { reasoning_content: thinkingTexts.join("\n\n") } : {}),
-  };
+  }
 }
 
 /**
- * Transforms thinking/reasoning content in response parts to OpenCode's expected format.
+ * Transforms thinking/reasoning content in response parts to Arctic's expected format.
  * Handles both Gemini-style (thought: true) and Anthropic-style (type: "thinking") formats.
  * Also extracts reasoning_content for Anthropic-style responses.
  */
 export function transformThinkingParts(response: unknown): unknown {
   if (!response || typeof response !== "object") {
-    return response;
+    return response
   }
 
-  const resp = response as Record<string, unknown>;
-  const result: Record<string, unknown> = { ...resp };
-  const reasoningTexts: string[] = [];
+  const resp = response as Record<string, unknown>
+  const result: Record<string, unknown> = { ...resp }
+  const reasoningTexts: string[] = []
 
   // Handle Anthropic-style content array (type: "thinking")
   if (Array.isArray(resp.content)) {
-    const transformedContent: any[] = [];
+    const transformedContent: any[] = []
     for (const block of resp.content) {
       if (block && typeof block === "object" && (block as any).type === "thinking") {
-        const thinkingText = (block as any).thinking || (block as any).text || "";
-        reasoningTexts.push(thinkingText);
+        const thinkingText = (block as any).thinking || (block as any).text || ""
+        reasoningTexts.push(thinkingText)
         transformedContent.push({
           ...block,
           type: "reasoning",
           text: thinkingText,
           thought: true,
-        });
+        })
       } else {
-        transformedContent.push(block);
+        transformedContent.push(block)
       }
     }
-    result.content = transformedContent;
+    result.content = transformedContent
   }
 
   // Handle Gemini-style candidates array
   if (Array.isArray(resp.candidates)) {
-    result.candidates = resp.candidates.map(transformGeminiCandidate);
+    result.candidates = resp.candidates.map(transformGeminiCandidate)
   }
 
   // Add reasoning_content if we found any thinking blocks (for Anthropic-style)
   if (reasoningTexts.length > 0 && !result.reasoning_content) {
-    result.reasoning_content = reasoningTexts.join("\n\n");
+    result.reasoning_content = reasoningTexts.join("\n\n")
   }
 
-  return result;
+  return result
 }
 
 /**
@@ -585,31 +586,31 @@ export function transformThinkingParts(response: unknown): unknown {
  */
 export function normalizeThinkingConfig(config: unknown): ThinkingConfig | undefined {
   if (!config || typeof config !== "object") {
-    return undefined;
+    return undefined
   }
 
-  const record = config as Record<string, unknown>;
-  const budgetRaw = record.thinkingBudget ?? record.thinking_budget;
-  const includeRaw = record.includeThoughts ?? record.include_thoughts;
+  const record = config as Record<string, unknown>
+  const budgetRaw = record.thinkingBudget ?? record.thinking_budget
+  const includeRaw = record.includeThoughts ?? record.include_thoughts
 
-  const thinkingBudget = typeof budgetRaw === "number" && Number.isFinite(budgetRaw) ? budgetRaw : undefined;
-  const includeThoughts = typeof includeRaw === "boolean" ? includeRaw : undefined;
+  const thinkingBudget = typeof budgetRaw === "number" && Number.isFinite(budgetRaw) ? budgetRaw : undefined
+  const includeThoughts = typeof includeRaw === "boolean" ? includeRaw : undefined
 
-  const enableThinking = thinkingBudget !== undefined && thinkingBudget > 0;
-  const finalInclude = enableThinking ? includeThoughts ?? false : false;
+  const enableThinking = thinkingBudget !== undefined && thinkingBudget > 0
+  const finalInclude = enableThinking ? (includeThoughts ?? false) : false
 
   if (!enableThinking && finalInclude === false && thinkingBudget === undefined && includeThoughts === undefined) {
-    return undefined;
+    return undefined
   }
 
-  const normalized: ThinkingConfig = {};
+  const normalized: ThinkingConfig = {}
   if (thinkingBudget !== undefined) {
-    normalized.thinkingBudget = thinkingBudget;
+    normalized.thinkingBudget = thinkingBudget
   }
   if (finalInclude !== undefined) {
-    normalized.includeThoughts = finalInclude;
+    normalized.includeThoughts = finalInclude
   }
-  return normalized;
+  return normalized
 }
 
 /**
@@ -617,22 +618,22 @@ export function normalizeThinkingConfig(config: unknown): ThinkingConfig | undef
  */
 export function parseAntigravityApiBody(rawText: string): AntigravityApiBody | null {
   try {
-    const parsed = JSON.parse(rawText);
+    const parsed = JSON.parse(rawText)
     if (Array.isArray(parsed)) {
-      const firstObject = parsed.find((item: unknown) => typeof item === "object" && item !== null);
+      const firstObject = parsed.find((item: unknown) => typeof item === "object" && item !== null)
       if (firstObject && typeof firstObject === "object") {
-        return firstObject as AntigravityApiBody;
+        return firstObject as AntigravityApiBody
       }
-      return null;
+      return null
     }
 
     if (parsed && typeof parsed === "object") {
-      return parsed as AntigravityApiBody;
+      return parsed as AntigravityApiBody
     }
 
-    return null;
+    return null
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -640,52 +641,54 @@ export function parseAntigravityApiBody(rawText: string): AntigravityApiBody | n
  * Extracts usageMetadata from a response object, guarding types.
  */
 export function extractUsageMetadata(body: AntigravityApiBody): AntigravityUsageMetadata | null {
-  const usage = (body.response && typeof body.response === "object"
-    ? (body.response as { usageMetadata?: unknown }).usageMetadata
-    : undefined) as AntigravityUsageMetadata | undefined;
+  const usage = (
+    body.response && typeof body.response === "object"
+      ? (body.response as { usageMetadata?: unknown }).usageMetadata
+      : undefined
+  ) as AntigravityUsageMetadata | undefined
 
   if (!usage || typeof usage !== "object") {
-    return null;
+    return null
   }
 
-  const asRecord = usage as Record<string, unknown>;
+  const asRecord = usage as Record<string, unknown>
   const toNumber = (value: unknown): number | undefined =>
-    typeof value === "number" && Number.isFinite(value) ? value : undefined;
+    typeof value === "number" && Number.isFinite(value) ? value : undefined
 
   return {
     totalTokenCount: toNumber(asRecord.totalTokenCount),
     promptTokenCount: toNumber(asRecord.promptTokenCount),
     candidatesTokenCount: toNumber(asRecord.candidatesTokenCount),
     cachedContentTokenCount: toNumber(asRecord.cachedContentTokenCount),
-  };
+  }
 }
 
 /**
  * Walks SSE lines to find a usage-bearing response chunk.
  */
 export function extractUsageFromSsePayload(payload: string): AntigravityUsageMetadata | null {
-  const lines = payload.split("\n");
+  const lines = payload.split("\n")
   for (const line of lines) {
     if (!line.startsWith("data:")) {
-      continue;
+      continue
     }
-    const jsonText = line.slice(5).trim();
+    const jsonText = line.slice(5).trim()
     if (!jsonText) {
-      continue;
+      continue
     }
     try {
-      const parsed = JSON.parse(jsonText);
+      const parsed = JSON.parse(jsonText)
       if (parsed && typeof parsed === "object") {
-        const usage = extractUsageMetadata({ response: (parsed as Record<string, unknown>).response });
+        const usage = extractUsageMetadata({ response: (parsed as Record<string, unknown>).response })
         if (usage) {
-          return usage;
+          return usage
         }
       }
     } catch {
-      continue;
+      continue
     }
   }
-  return null;
+  return null
 }
 
 /**
@@ -697,13 +700,14 @@ export function rewriteAntigravityPreviewAccessError(
   requestedModel?: string,
 ): AntigravityApiBody | null {
   if (!needsPreviewAccessOverride(status, body, requestedModel)) {
-    return null;
+    return null
   }
 
-  const error: AntigravityApiError = body.error ?? {};
-  const trimmedMessage = typeof error.message === "string" ? error.message.trim() : "";
-  const messagePrefix = trimmedMessage.length > 0 ? trimmedMessage : "Antigravity preview features are not enabled for this account.";
-  const enhancedMessage = `${messagePrefix} Request preview access at ${ANTIGRAVITY_PREVIEW_LINK} before using this model.`;
+  const error: AntigravityApiError = body.error ?? {}
+  const trimmedMessage = typeof error.message === "string" ? error.message.trim() : ""
+  const messagePrefix =
+    trimmedMessage.length > 0 ? trimmedMessage : "Antigravity preview features are not enabled for this account."
+  const enhancedMessage = `${messagePrefix} Request preview access at ${ANTIGRAVITY_PREVIEW_LINK} before using this model.`
 
   return {
     ...body,
@@ -711,43 +715,43 @@ export function rewriteAntigravityPreviewAccessError(
       ...error,
       message: enhancedMessage,
     },
-  };
+  }
 }
 
 function needsPreviewAccessOverride(status: number, body: AntigravityApiBody, requestedModel?: string): boolean {
   if (status !== 404) {
-    return false;
+    return false
   }
 
   if (isAntigravityModel(requestedModel)) {
-    return true;
+    return true
   }
 
-  const errorMessage = typeof body.error?.message === "string" ? body.error.message : "";
-  return isAntigravityModel(errorMessage);
+  const errorMessage = typeof body.error?.message === "string" ? body.error.message : ""
+  return isAntigravityModel(errorMessage)
 }
 
 function isAntigravityModel(target?: string): boolean {
   if (!target) {
-    return false;
+    return false
   }
 
   // Check for Antigravity models instead of Gemini 3
-  return /antigravity/i.test(target) || /opus/i.test(target) || /claude/i.test(target);
+  return /antigravity/i.test(target) || /opus/i.test(target) || /claude/i.test(target)
 }
 
 export async function parseAntigravityError(response: Response): Promise<{ message: string; code?: number }> {
   try {
-    const body = await response.json();
-    const error = body.error;
+    const body = await response.json()
+    const error = body.error
     if (error && typeof error === "object") {
       return {
         message: error.message || error.status || "Unknown error",
         code: error.code,
-      };
+      }
     }
-    return { message: JSON.stringify(body) };
+    return { message: JSON.stringify(body) }
   } catch {
-    return { message: `HTTP ${response.status}: ${response.statusText}` };
+    return { message: `HTTP ${response.status}: ${response.statusText}` }
   }
 }

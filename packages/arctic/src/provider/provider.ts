@@ -65,6 +65,7 @@ export namespace Provider {
       }
     },
     async arctic(input) {
+      if (!input) return { autoload: false }
       const hasKey = await (async () => {
         const env = Env.all()
         if (input.env.some((item) => env[item])) return true
@@ -443,6 +444,57 @@ export namespace Provider {
         autoload: true,
         options: {
           baseURL,
+        },
+      }
+    },
+    alibaba: async () => {
+      const { ensureAuth, getApiBaseUrl } = await import("../auth/qwen-oauth")
+      const auth = await Auth.get("alibaba")
+      const alibabaAuth = auth?.type === "alibaba" ? auth : undefined
+
+      return {
+        autoload: !!alibabaAuth,
+        options: {
+          baseURL: getApiBaseUrl(alibabaAuth?.enterpriseUrl),
+          // Add marker to change cache key so custom fetch is used
+          _qwenOauthTransform: true,
+          fetch: async (input: any, init?: BunFetchRequestInit) => {
+            // Refresh token on each request
+            const freshAuth = await Auth.get("alibaba")
+            const freshAlibabaAuth = freshAuth?.type === "alibaba" ? freshAuth : undefined
+            const accessToken = await ensureAuth(freshAlibabaAuth ?? undefined)
+
+            if (!accessToken) {
+              throw new Error(
+                "Alibaba authentication failed. Please run 'arctic auth' and re-authenticate with your Qwen account.",
+              )
+            }
+
+            let opts = init ?? {}
+            let url = input
+
+            if (input instanceof Request) {
+              const req = input as Request
+              url = req.url
+              opts = {
+                ...opts,
+                method: req.method,
+                headers: req.headers,
+                body: req.body ? await req.text() : undefined,
+                signal: opts.signal ?? req.signal,
+              }
+            }
+
+            // Add auth headers
+            const headers = new Headers(opts.headers)
+            headers.set("Authorization", `Bearer ${accessToken}`)
+            headers.set("X-DashScope-AuthType", "qwen_oauth")
+
+            return fetch(url, {
+              ...opts,
+              headers,
+            })
+          },
         },
       }
     },
@@ -1053,8 +1105,8 @@ export namespace Provider {
     const config = await Config.get()
     const modelsDev = await ModelsDev.get()
     const database = mapValues(modelsDev, fromModelsDevProvider)
-    if (database["opencode"]) {
-      database["arctic"] = { ...database["opencode"], id: "arctic" }
+    if (database["arctic"]) {
+      database["arctic"] = { ...database["arctic"], id: "arctic" }
     }
 
     database["codex"] = {

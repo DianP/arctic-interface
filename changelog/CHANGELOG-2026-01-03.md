@@ -1,5 +1,11 @@
 # Changelog - January 3, 2026
 
+## Provider Additions
+
+### Qwen Code Provider
+
+- Added Qwen Code provider with usage limits
+
 ## Documentation Improvements
 
 ### Landing Page Redesign
@@ -44,8 +50,8 @@
 
 ## Dependencies
 
-- Added @base-ui/react version 1.0.0 for Coss UI component foundation
+- Added @base-ui/react for Coss UI component foundation
 
 ---
 
-**Summary**: This release focuses on comprehensive documentation and landing page improvements with Apple-level design aesthetics. The landing page now better communicates Arctic's core value proposition with refined UI components, clearer messaging, and improved visual hierarchy. Documentation has been reorganized for clarity with platform-specific guidance and accurate technical instructions.
+**Summary**: This release adds the Qwen Code provider with usage limits, alongside comprehensive documentation and landing page improvements. The landing page now better communicates Arctic's core value proposition with refined UI components, clearer messaging, and improved visual hierarchy. Documentation has been reorganized for clarity with platform-specific guidance and accurate technical instructions.

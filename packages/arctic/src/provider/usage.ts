@@ -90,6 +90,7 @@ export namespace ProviderUsage {
     google: fetchGoogleUsage,
     "kimi-for-coding": fetchKimiUsage,
     antigravity: fetchAntigravityUsage,
+    alibaba: fetchAlibabaUsage,
   }
 
   export async function fetch(
@@ -1452,6 +1453,68 @@ export namespace ProviderUsage {
       },
       tokenUsage,
       costSummary,
+    }
+  }
+
+  async function fetchAlibabaUsage(input: {
+    provider: Provider.Info
+    sessionID?: string
+    timePeriod?: TimePeriod
+  }): Promise<Omit<Record, "providerID" | "providerName" | "fetchedAt">> {
+    const DAILY_REQUEST_LIMIT = 2000
+
+    // Alibaba quota is DAILY (2000 req/day), not per-session
+    // Always count all requests from today, regardless of session context
+    const now = Date.now()
+    const startOfDay = new Date(now)
+    startOfDay.setHours(0, 0, 0, 0)
+    const dayStart = startOfDay.getTime()
+
+    // Always scan all sessions for daily quota
+    const messageKeys = await Storage.list(["message"])
+    let requestCount = 0
+
+    for (const messageKey of messageKeys) {
+      const msg = await Storage.read<MessageV2.Info>(messageKey)
+
+      // Only count assistant messages from alibaba provider
+      if (msg.role !== "assistant" || msg.providerID !== "alibaba") {
+        continue
+      }
+
+      const messageTime = msg.time?.completed ?? msg.time?.created
+      if (!messageTime || messageTime < dayStart) {
+        continue
+      }
+
+      requestCount++
+    }
+
+    const usedPercent = (requestCount / DAILY_REQUEST_LIMIT) * 100
+    const remaining = Math.max(0, DAILY_REQUEST_LIMIT - requestCount)
+    const limitReached = requestCount >= DAILY_REQUEST_LIMIT
+
+    // Calculate when the quota resets (midnight)
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+    const resetsAt = Math.floor(tomorrow.getTime() / 1000)
+
+    return {
+      planType: `Qwen OAuth\n- Daily requests: ${requestCount.toLocaleString()} / ${DAILY_REQUEST_LIMIT.toLocaleString()} (${remaining.toLocaleString()} remaining)`,
+      allowed: !limitReached,
+      limitReached,
+      limits: {
+        primary: {
+          usedPercent,
+          resetsAt,
+          label: "Daily",
+        },
+      },
+      credits: {
+        hasCredits: true,
+        unlimited: false,
+      },
     }
   }
 }

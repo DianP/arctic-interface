@@ -163,6 +163,7 @@ export function Sidebar(props: { sessionID: string; onHide?: () => void }) {
     "kimi-for-coding",
     "github-copilot",
     "antigravity",
+    "alibaba",
   ]
 
   const showUsageLimits = createMemo(() => {

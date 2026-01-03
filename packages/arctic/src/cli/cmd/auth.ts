@@ -259,6 +259,42 @@ async function handleOllamaLogin() {
   }
 }
 
+async function handleAlibabaLogin() {
+  prompts.log.info("Authorize Alibaba (Qwen Code) with your Qwen account via device login.")
+
+  const { ArcticQwenAuth } = await import("../../auth/qwen-oauth")
+  const plugin = await ArcticQwenAuth({} as any)
+
+  if (!plugin.auth) {
+    throw new Error("Qwen auth plugin failed to initialize")
+  }
+
+  const oauthMethod = plugin.auth.methods.find((m) => m.type === "oauth")
+  if (!oauthMethod || !oauthMethod.authorize) {
+    throw new Error("Qwen OAuth method not found")
+  }
+
+  const authorize = await oauthMethod.authorize()
+
+  if (authorize.instructions) {
+    prompts.log.info(authorize.instructions)
+  }
+
+  if (authorize.method === "auto" && authorize.callback) {
+    const spinner = prompts.spinner()
+    spinner.start("Waiting for authorization...")
+    const result = await authorize.callback()
+    if (result.type === "failed") {
+      spinner.stop("Failed to authorize", 1)
+    }
+    if (result.type === "success") {
+      spinner.stop("Login successful")
+    }
+  }
+
+  prompts.outro("Done")
+}
+
 export const AuthCommand = cmd({
   command: "auth",
   describe: "manage credentials",
@@ -328,33 +364,9 @@ export const AuthLoginCommand = cmd({
       async fn() {
         UI.empty()
         prompts.intro("Add credential")
-        if (args.url) {
-          const wellknown = await fetch(`${args.url}/.well-known/arctic`).then((x) => x.json() as any)
-          prompts.log.info(`Running \`${wellknown.auth.command.join(" ")}\``)
-          const proc = Bun.spawn({
-            cmd: wellknown.auth.command,
-            stdout: "pipe",
-          })
-          const exit = await proc.exited
-          if (exit !== 0) {
-            prompts.log.error("Failed")
-            prompts.outro("Done")
-            return
-          }
-          const token = await new Response(proc.stdout).text()
-          await Auth.set(args.url, {
-            type: "wellknown",
-            key: wellknown.auth.env,
-            token: token.trim(),
-          })
-          prompts.log.success("Logged into " + args.url)
-          prompts.outro("Done")
-          return
-        }
+
         await ModelsDev.refresh().catch(() => {})
-
         const config = await Config.get()
-
         const disabled = new Set(config.disabled_providers ?? [])
         const enabled = config.enabled_providers ? new Set(config.enabled_providers) : undefined
 
@@ -386,62 +398,108 @@ export const AuthLoginCommand = cmd({
           env: [],
           models: {},
         }
-
-        const priority: Record<string, number> = {
-          arctic: 0,
-          anthropic: 1,
-          "github-copilot": 2,
-          openai: 3,
-          google: 4,
-          antigravity: 5,
-          openrouter: 5,
-          ollama: 7,
-          vercel: 6,
+        providers["alibaba"] = {
+          id: "alibaba",
+          name: "Alibaba (Qwen Code)",
+          env: [],
+          models: {},
         }
-        let provider = await prompts.autocomplete({
-          message: "Select provider",
-          maxItems: 8,
-          options: [
-            ...pipe(
-              providers,
-              values(),
-              sortBy(
-                (x) => priority[x.id] ?? 99,
-                (x) => x.name ?? x.id,
-              ),
-              map((x) => ({
-                label: x.name,
-                value: x.id,
-                hint: {
-                  arctic: "recommended",
-                  anthropic: "Claude Max or API key",
-                  "github-copilot": "usage tracking",
-                  ollama: "local models",
-                }[x.id],
-              })),
-            ),
-            {
-              value: "other",
-              label: "Other",
-            },
-          ],
-        })
 
-        if (prompts.isCancel(provider)) throw new UI.CancelledError()
+        let provider = args.url
+
+        // If args.url is provided but not a known provider, treat it as a URL
+        if (provider && !providers[provider]) {
+          const wellknown = await fetch(`${args.url}/.well-known/arctic`)
+            .then((x) => x.json() as any)
+            .catch(() => undefined)
+          if (wellknown) {
+            prompts.log.info(`Running \`${wellknown.auth.command.join(" ")}\``)
+            const proc = Bun.spawn({
+              cmd: wellknown.auth.command,
+              stdout: "pipe",
+            })
+            const exit = await proc.exited
+            if (exit !== 0) {
+              prompts.log.error("Failed")
+              prompts.outro("Done")
+              return
+            }
+            const token = await new Response(proc.stdout).text()
+            await Auth.set(args.url!, {
+              type: "wellknown",
+              key: wellknown.auth.env,
+              token: token.trim(),
+            })
+            prompts.log.success("Logged into " + args.url)
+            prompts.outro("Done")
+            return
+          }
+          // If it's not a known provider AND fetch failed/returned nothing, we might want to warn or fall through?
+          // But looking at original code, it assumed it was a URL.
+          // However, if the user typed a provider name that isn't loaded yet or made a typo, treating it as URL might be confusing.
+          // Let's assume if it contains dots or slashes it's a URL, otherwise it's a provider ID?
+          // For now, relying on providers list is safer.
+        }
+
+        if (!provider) {
+          const priority: Record<string, number> = {
+            arctic: 0,
+            anthropic: 1,
+            "github-copilot": 2,
+            openai: 3,
+            google: 4,
+            antigravity: 5,
+            openrouter: 5,
+            ollama: 7,
+            vercel: 6,
+            alibaba: 8,
+          }
+          const selected = await prompts.autocomplete({
+            message: "Select provider",
+            maxItems: 8,
+            options: [
+              ...pipe(
+                providers,
+                values(),
+                sortBy(
+                  (x) => priority[x.id] ?? 99,
+                  (x) => x.name ?? x.id,
+                ),
+                map((x) => ({
+                  label: x.name,
+                  value: x.id,
+                  hint: {
+                    arctic: "recommended",
+                    anthropic: "Claude Max or API key",
+                    "github-copilot": "usage tracking",
+                    ollama: "local models",
+                  }[x.id],
+                })),
+              ),
+              {
+                value: "other",
+                label: "Other",
+              },
+            ],
+          })
+
+          if (prompts.isCancel(selected)) throw new UI.CancelledError()
+          provider = selected as string
+        }
 
         const plugin = await Plugin.list().then((x) => x.find((x) => x.auth?.provider === provider))
         if (plugin && plugin.auth) {
-          const handled = await handlePluginAuth({ auth: plugin.auth }, provider)
+          const handled = await handlePluginAuth({ auth: plugin.auth }, provider!)
           if (handled) return
         }
 
         if (provider === "other") {
-          provider = await prompts.text({
+          const input = await prompts.text({
             message: "Enter provider id",
             validate: (x) => (x && x.match(/^[0-9a-z-]+$/) ? undefined : "a-z, 0-9 and hyphens only"),
           })
-          if (prompts.isCancel(provider)) throw new UI.CancelledError()
-          provider = provider.replace(/^@ai-sdk\//, "")
+          if (prompts.isCancel(input)) throw new UI.CancelledError()
+          provider = input.replace(/^@ai-sdk\//, "")
           if (prompts.isCancel(provider)) throw new UI.CancelledError()
 
           // Check if a plugin provides auth for this custom provider
@@ -479,6 +537,11 @@ export const AuthLoginCommand = cmd({
           return
         }
 
+        if (provider === "alibaba") {
+          await handleAlibabaLogin()
+          return
+        }
+
         if (provider === "vercel") {
           prompts.log.info("You can create an api key at https://vercel.link/ai-gateway-token")
         }
@@ -501,7 +564,7 @@ export const AuthLoginCommand = cmd({
             token: key,
           })
         } else {
-          await Auth.set(provider, {
+          await Auth.set(provider!, {
             type: "api",
             key,
           })
