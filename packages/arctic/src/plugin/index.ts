@@ -12,6 +12,7 @@ import { ArcticGoogleAuth } from "../auth/google-oauth/index"
 import { ArcticAntigravityAuth } from "../auth/antigravity-oauth/index"
 import { ArcticAmpAuth } from "../auth/amp-auth/index"
 import { ArcticQwenAuth } from "../auth/qwen-oauth/index"
+import { ArcticAnthropicAuth } from "../auth/anthropic-oauth/index"
 
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })
@@ -34,7 +35,7 @@ export namespace Plugin {
     const plugins = [...(config.plugin ?? [])]
     if (!Flag.ARCTIC_DISABLE_DEFAULT_PLUGINS) {
       plugins.push("opencode-copilot-auth@0.0.9")
-      plugins.push("opencode-anthropic-auth@0.0.5")
+      // Note: Anthropic auth is now handled by ArcticAnthropicAuth internal plugin
     }
 
     hooks.push(await ArcticCodexAuth(input))
@@ -42,6 +43,7 @@ export namespace Plugin {
     hooks.push(await ArcticAntigravityAuth(input))
     hooks.push(await ArcticAmpAuth(input))
     hooks.push(await ArcticQwenAuth(input))
+    hooks.push(await ArcticAnthropicAuth(input))
 
     for (let plugin of plugins) {
       log.info("loading plugin", { path: plugin })

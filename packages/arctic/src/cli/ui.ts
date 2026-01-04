@@ -29,6 +29,20 @@ export namespace UI {
     TEXT_INFO_BOLD: "\x1b[94m\x1b[1m",
   }
 
+  /**
+   * Makes a URL clickable in terminals that support OSC 8 hyperlinks.
+   * Falls back to plain URL if not supported.
+   *
+   * @param url - The URL to make clickable
+   * @param text - Optional display text (defaults to the URL itself)
+   * @returns The formatted hyperlink
+   */
+  export function hyperlink(url: string, text?: string): string {
+    const displayText = text || url
+    // OSC 8 format: \x1b]8;;URL\x07TEXT\x1b]8;;\x07
+    return `\x1b]8;;${url}\x07${displayText}\x1b]8;;\x07`
+  }
+
   export function println(...message: string[]) {
     print(...message)
     Bun.stderr.write(EOL)

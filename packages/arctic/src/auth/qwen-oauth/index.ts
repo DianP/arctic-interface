@@ -2,6 +2,7 @@ import type { Plugin, PluginInput } from "@arctic-cli/plugin"
 import { openBrowserUrl } from "../codex-oauth/auth/browser"
 import { Auth } from "../index"
 import { ensureAuth, getApiBaseUrl, pollForToken, requestDeviceCode } from "./auth"
+import { UI } from "@/cli/ui"
 
 export { ensureAuth, getApiBaseUrl } from "./auth"
 
@@ -53,7 +54,7 @@ export const ArcticQwenAuth: Plugin = async (_: PluginInput) => {
 
             return {
               url,
-              instructions: `Visit the URL in your browser and click the button to authorize.\n\nURL: ${url}`,
+              instructions: `Visit the URL in your browser and click the button to authorize.\n\nURL: ${UI.hyperlink(url)}`,
               method: "auto" as const,
               async callback() {
                 while (true) {

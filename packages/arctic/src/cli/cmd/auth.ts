@@ -101,12 +101,16 @@ async function handlePluginAuth(plugin: { auth: PluginAuth }, provider: string):
     }
 
     if (authorize.url) {
-      prompts.log.info("Go to: " + authorize.url)
+      // Use console.log directly because @clack/prompts strips escape sequences
+      console.log("│")
+      console.log("●  Go to: " + UI.hyperlink(authorize.url))
     }
 
     if (authorize.method === "auto") {
       if (authorize.instructions) {
-        prompts.log.info(authorize.instructions)
+        // Use console.log directly to preserve hyperlinks in instructions
+        console.log("│")
+        console.log("●  " + authorize.instructions)
       }
       const spinner = prompts.spinner()
       spinner.start("Waiting for authorization...")

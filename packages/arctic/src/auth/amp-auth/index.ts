@@ -3,6 +3,7 @@ import crypto from "node:crypto"
 import http from "node:http"
 import { URL } from "node:url"
 import { openBrowserUrl } from "../codex-oauth/auth/browser"
+import { UI } from "@/cli/ui"
 
 const AMP_DEFAULT_URL = "https://ampcode.com"
 const CALLBACK_PATH = "/auth/callback"
@@ -106,7 +107,7 @@ export const ArcticAmpAuth: Plugin = async (_input: PluginInput) => {
 
             return {
               url: loginUrl,
-              instructions: `If the callback fails, open ${manualUrl} and paste the access token.`,
+              instructions: `If the callback fails, open ${UI.hyperlink(manualUrl, manualUrl)} and paste the access token.`,
               method: "auto",
               callback: async () => {
                 try {

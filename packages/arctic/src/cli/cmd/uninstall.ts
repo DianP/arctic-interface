@@ -199,6 +199,22 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   if (method === "curl" && targets.binary) {
+    if (process.platform !== "win32") {
+      spinner.start("Removing binary...")
+      try {
+        await fs.unlink(targets.binary)
+        spinner.stop("Binary removed")
+
+        const binDir = path.dirname(targets.binary)
+        if (binDir.includes(".arctic")) {
+          await fs.rm(binDir, { recursive: true, force: true }).catch(() => {})
+        }
+        return
+      } catch {
+        spinner.stop("Failed to remove binary", 1)
+      }
+    }
+
     UI.empty()
     prompts.log.message("To finish removing the binary, run:")
     prompts.log.info(`  rm "${targets.binary}"`)

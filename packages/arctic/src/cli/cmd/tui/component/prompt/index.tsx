@@ -495,7 +495,7 @@ export function Prompt(props: PromptProps) {
       {
         title: "Paste",
         value: "prompt.paste",
-        disabled: true,
+        disabled: false,
         keybind: "input_paste",
         category: "Prompt",
         onSelect: async () => {
@@ -506,6 +506,12 @@ export function Prompt(props: PromptProps) {
               mime: content.mime,
               content: content.data,
             })
+          } else if (content?.mime === "text/plain") {
+            // Paste text content from clipboard
+            const text = content.data
+            if (text) {
+              input.insertText(text)
+            }
           }
         },
       },

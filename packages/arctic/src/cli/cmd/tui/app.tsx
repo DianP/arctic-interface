@@ -116,6 +116,9 @@ export function tui(input: { url: string; args: Args; onExit?: () => Promise<voi
   process.stdout.write("\x1b[>4;2m")
   // Enable focus tracking to handle terminal tab switches
   process.stdout.write("\x1b[?1004h")
+  // Enable bracketed paste mode (wraps pasted text with \x1b[200~ and \x1b[201~ markers)
+  // This prevents terminals from executing pasted commands and improves paste detection
+  process.stdout.write("\x1b[?2004h")
 
   // promise to prevent immediate exit
   return new Promise<void>(async (resolve) => {
@@ -126,6 +129,8 @@ export function tui(input: { url: string; args: Args; onExit?: () => Promise<voi
       process.stdout.write("\x1b[>4;0m")
       // Disable focus tracking
       process.stdout.write("\x1b[?1004l")
+      // Disable bracketed paste mode
+      process.stdout.write("\x1b[?2004l")
       await input.onExit?.()
       resolve()
     }
@@ -208,6 +213,8 @@ function App() {
     renderer.enableKittyKeyboard()
     process.stdout.write("\x1b[>4;1m")
     process.stdout.write("\x1b[>4;2m")
+    // Re-enable bracketed paste mode
+    process.stdout.write("\x1b[?2004h")
 
     // Handle terminal focus events (e.g., switching tabs)
     // Focus-in events trigger a repaint to fix rendering issues
