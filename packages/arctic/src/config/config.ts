@@ -797,6 +797,8 @@ export namespace Config {
             .describe(
               "Timeout in milliseconds for requests to this provider. Default is 300000 (5 minutes). Set to false to disable timeout.",
             ),
+          disableSessionTitle: z.boolean().optional().describe("Disable session title generation"),
+          disableMessageTitle: z.boolean().optional().describe("Disable message title generation"),
         })
         .catchall(z.any())
         .optional(),

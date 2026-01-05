@@ -1,16 +1,15 @@
 import { BusEvent } from "@/bus/bus-event"
-import { Bus } from "@/bus"
-import z from "zod"
-import { $ } from "bun"
 import type { BunFile } from "bun"
+import { $ } from "bun"
 import { formatPatch, structuredPatch } from "diff"
-import path from "path"
 import fs from "fs"
-import ignore from "ignore"
-import { Log } from "../util/log"
-import { Instance } from "../project/instance"
-import { Ripgrep } from "./ripgrep"
 import fuzzysort from "fuzzysort"
+import ignore from "ignore"
+import path from "path"
+import z from "zod"
+import { Instance } from "../project/instance"
+import { Log } from "../util/log"
+import { Ripgrep } from "./ripgrep"
 
 export namespace File {
   const log = Log.create({ service: "file" })

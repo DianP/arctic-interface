@@ -479,3 +479,32 @@ test("deduplicates duplicate plugins from global and local configs", async () =>
     },
   })
 })
+
+test("handles provider options", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "arctic.json"),
+        JSON.stringify({
+          $schema: "https://usearctic.sh/config.json",
+          provider: {
+            "github-copilot": {
+              options: {
+                disableSessionTitle: true,
+                disableMessageTitle: true,
+              },
+            },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.provider?.["github-copilot"]?.options?.disableSessionTitle).toBe(true)
+      expect(config.provider?.["github-copilot"]?.options?.disableMessageTitle).toBe(true)
+    },
+  })
+})

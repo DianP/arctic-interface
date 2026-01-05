@@ -1,60 +1,59 @@
-import path from "path"
-import os from "os"
-import fs from "fs/promises"
-import z from "zod"
-import { Identifier } from "../id/id"
-import { MessageV2 } from "./message-v2"
-import { Log } from "../util/log"
-import { Flag } from "../flag/flag"
-import { SessionRevert } from "./revert"
-import { Session } from "."
-import { Agent } from "../agent/agent"
-import { Provider } from "../provider/provider"
 import {
-  generateText,
-  type ModelMessage,
   type Tool as AITool,
+  generateText,
+  jsonSchema,
+  type ModelMessage,
+  stepCountIs,
   tool,
   wrapLanguageModel,
-  stepCountIs,
-  jsonSchema,
 } from "ai"
-import { SessionCompaction } from "./compaction"
-import { BenchmarkSchema } from "./benchmark-schema"
-import { Instance } from "../project/instance"
+import fs from "fs/promises"
+import os from "os"
+import path from "path"
+import z from "zod"
+import { Session } from "."
+import { Agent } from "../agent/agent"
 import { Bus } from "../bus"
-import { ProviderTransform } from "../provider/transform"
-import { SystemPrompt } from "./system"
+import { Flag } from "../flag/flag"
+import { Identifier } from "../id/id"
 import { Plugin } from "../plugin"
+import { Instance } from "../project/instance"
+import { Provider } from "../provider/provider"
+import { ProviderTransform } from "../provider/transform"
+import { Log } from "../util/log"
+import { BenchmarkSchema } from "./benchmark-schema"
+import { SessionCompaction } from "./compaction"
+import { MessageV2 } from "./message-v2"
+import { SessionRevert } from "./revert"
+import { SystemPrompt } from "./system"
 
-import PROMPT_PLAN from "../session/prompt/plan.txt"
+import { Shell } from "@/shell/shell"
+import { TaskTool } from "@/tool/task"
+import { fn } from "@/util/fn"
+import { NamedError } from "@arctic-cli/util/error"
+import { $, fileURLToPath } from "bun"
+import { spawn } from "child_process"
+import { clone, mergeDeep, pipe } from "remeda"
+import { ulid } from "ulid"
+import { Command } from "../command"
+import { Config } from "../config/config"
+import { ConfigMarkdown } from "../config/markdown"
+import { FileTime } from "../file/time"
+import { LSP } from "../lsp"
+import { MCP } from "../mcp"
 import BUILD_SWITCH from "../session/prompt/build-switch.txt"
 import MAX_STEPS from "../session/prompt/max-steps.txt"
-import { defer } from "../util/defer"
-import { clone, mergeDeep, pipe } from "remeda"
-import { ToolRegistry } from "../tool/registry"
-import { Wildcard } from "../util/wildcard"
-import { MCP } from "../mcp"
-import { LSP } from "../lsp"
-import { ReadTool } from "../tool/read"
+import PROMPT_PLAN from "../session/prompt/plan.txt"
 import { ListTool } from "../tool/ls"
-import { FileTime } from "../file/time"
-import { ulid } from "ulid"
-import { spawn } from "child_process"
-import { Command } from "../command"
-import { $, fileURLToPath } from "bun"
-import { ConfigMarkdown } from "../config/markdown"
-import { SessionSummary } from "./summary"
-import { Config } from "../config/config"
-import { NamedError } from "@arctic-cli/util/error"
-import { fn } from "@/util/fn"
-import { SessionProcessor } from "./processor"
-import { TaskTool } from "@/tool/task"
-import { SessionStatus } from "./status"
-import { Shell } from "@/shell/shell"
-import { SessionUsage } from "./usage"
+import { ReadTool } from "../tool/read"
+import { ToolRegistry } from "../tool/registry"
+import { defer } from "../util/defer"
+import { Wildcard } from "../util/wildcard"
 import { SessionBenchmark } from "./benchmark"
-import { Snapshot } from "@/snapshot"
+import { SessionProcessor } from "./processor"
+import { SessionStatus } from "./status"
+import { SessionSummary } from "./summary"
+import { SessionUsage } from "./usage"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -374,8 +373,6 @@ export namespace SessionPrompt {
 
     using _ = defer(() => cancel(sessionID))
 
-    let targetUserMessageID: string | undefined
-
     let step = 0
     while (true) {
       SessionStatus.set(sessionID, { type: "busy" })
@@ -414,7 +411,6 @@ export namespace SessionPrompt {
         if (!lastUser && msg.info.role === "user") {
           if (incompleteUserMessageIDs.has(msg.info.id)) {
             lastUser = msg.info as MessageV2.User
-            targetUserMessageID = msg.info.id
           }
         }
         if (!lastAssistant && msg.info.role === "assistant") lastAssistant = msg.info as MessageV2.Assistant
@@ -1661,6 +1657,22 @@ export namespace SessionPrompt {
     return result
   }
 
+  function fallbackTitleFromMessage(message: MessageV2.WithParts) {
+    for (const part of message.parts) {
+      if (part.type === "text" && !part.synthetic && part.text.trim().length > 0) {
+        const cleaned = part.text.replace(/\s+/g, " ").trim()
+        return cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
+      }
+    }
+    for (const part of message.parts) {
+      if (part.type === "file" && part.filename) {
+        const cleaned = `File: ${part.filename}`
+        return cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
+      }
+    }
+    return undefined
+  }
+
   async function ensureTitle(input: {
     session: Session.Info
     message: MessageV2.WithParts
@@ -1674,11 +1686,13 @@ export namespace SessionPrompt {
       input.history.filter((m) => m.info.role === "user" && !m.parts.every((p) => "synthetic" in p && p.synthetic))
         .length === 1
     if (!isFirst) return
+    const fallbackTitle = fallbackTitleFromMessage(input.message)
     const cfg = await Config.get()
     const small =
       (await Provider.getSmallModel(input.providerID)) ?? (await Provider.getModel(input.providerID, input.modelID))
     const language = await Provider.getLanguage(small)
     const provider = await Provider.getProvider(small.providerID)
+    if (provider?.options?.disableSessionTitle) return
     const options = pipe(
       {},
       mergeDeep(ProviderTransform.options(small, input.session.id, provider?.options)),
@@ -1730,21 +1744,24 @@ export namespace SessionPrompt {
       },
     })
       .then((result) => {
-        if (result.text)
-          return Session.update(input.session.id, (draft) => {
-            const cleaned = result.text
-              .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
-              .split("\n")
-              .map((line) => line.trim())
-              .find((line) => line.length > 0)
-            if (!cleaned) return
-
-            const title = cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
-            draft.title = title
-          })
+        return Session.update(input.session.id, (draft) => {
+          const cleaned = result.text
+            ?.replace(/<think>[\s\S]*?<\/think>\s*/g, "")
+            .split("\n")
+            .map((line) => line.trim())
+            .find((line) => line.length > 0)
+          const base = cleaned ?? fallbackTitle
+          if (!base) return
+          const title = base.length > 100 ? base.substring(0, 97) + "..." : base
+          draft.title = title
+        })
       })
       .catch((error) => {
         log.error("failed to generate title", { error, model: small.id })
+        if (!fallbackTitle) return
+        return Session.update(input.session.id, (draft) => {
+          draft.title = fallbackTitle
+        })
       })
   }
 }

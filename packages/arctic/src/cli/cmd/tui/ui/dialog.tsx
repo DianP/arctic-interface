@@ -1,10 +1,8 @@
-import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { batch, createContext, Show, useContext, type JSX, type ParentProps } from "solid-js"
-import { useTheme } from "@tui/context/theme"
 import { Renderable, RGBA } from "@opentui/core"
+import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { useTheme } from "@tui/context/theme"
+import { batch, createContext, Show, useContext, type JSX, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
-import { Clipboard } from "@tui/util/clipboard"
-import { useToast } from "./toast"
 
 export function Dialog(
   props: ParentProps<{
@@ -129,28 +127,10 @@ const ctx = createContext<DialogContext>()
 
 export function DialogProvider(props: ParentProps) {
   const value = init()
-  const renderer = useRenderer()
-  const toast = useToast()
   return (
     <ctx.Provider value={value}>
       {props.children}
-      <box
-        position="absolute"
-        onMouseUp={async () => {
-          const text = renderer.getSelection()?.getSelectedText()
-          if (text && text.length > 0) {
-            const base64 = Buffer.from(text).toString("base64")
-            const osc52 = `\x1b]52;c;${base64}\x07`
-            const finalOsc52 = process.env["TMUX"] ? `\x1bPtmux;\x1b${osc52}\x1b\\` : osc52
-            /* @ts-expect-error */
-            renderer.writeOut(finalOsc52)
-            await Clipboard.copy(text)
-              .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
-              .catch(toast.error)
-            renderer.clearSelection()
-          }
-        }}
-      >
+      <box position="absolute">
         <Show when={value.stack.length}>
           <Dialog onClose={() => value.clear()} size={value.size}>
             {value.stack.at(-1)!.element}

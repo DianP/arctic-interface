@@ -1,12 +1,11 @@
 import { BusEvent } from "@/bus/bus-event"
-import { Bus } from "@/bus"
-import path from "path"
-import { $ } from "bun"
-import z from "zod"
-import { NamedError } from "@arctic-cli/util/error"
-import { Log } from "../util/log"
 import { iife } from "@/util/iife"
+import { NamedError } from "@arctic-cli/util/error"
+import { $ } from "bun"
+import path from "path"
+import z from "zod"
 import { Flag } from "../flag/flag"
+import { Log } from "../util/log"
 
 declare global {
   const ARCTIC_VERSION: string
@@ -80,6 +79,7 @@ export namespace Installation {
         name: "bun" as const,
         command: () => $`bun pm ls -g`.throws(false).text(),
       },
+      // TODO: brew is not there yet
       {
         name: "brew" as const,
         command: () => $`brew list --formula arctic`.throws(false).text(),

@@ -78,17 +78,18 @@ export namespace SessionSummary {
     const small =
       (await Provider.getSmallModel(assistantMsg.providerID)) ??
       (await Provider.getModel(assistantMsg.providerID, assistantMsg.modelID))
+    const provider = await Provider.getProvider(small.providerID)
     const language = await Provider.getLanguage(small)
 
     const options = pipe(
       {},
-      mergeDeep(ProviderTransform.options(small, assistantMsg.sessionID)),
+      mergeDeep(ProviderTransform.options(small, assistantMsg.sessionID, provider?.options)),
       mergeDeep(ProviderTransform.smallOptions(small)),
       mergeDeep(small.options),
     )
 
     const textPart = msgWithParts.parts.find((p) => p.type === "text" && !p.synthetic) as MessageV2.TextPart
-    if (textPart && !userMsg.summary?.title) {
+    if (textPart && !userMsg.summary?.title && !provider?.options?.disableMessageTitle) {
       const result = await generateText({
         maxOutputTokens: small.capabilities.reasoning ? 1500 : 20,
         providerOptions: ProviderTransform.providerOptions(small, options),

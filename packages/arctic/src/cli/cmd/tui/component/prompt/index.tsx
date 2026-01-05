@@ -30,6 +30,7 @@ import { Autocomplete, type AutocompleteRef } from "./autocomplete"
 import { usePromptHistory, type PromptInfo } from "./history"
 
 import { Pricing } from "@/provider/pricing"
+import type { ProviderUsage } from "@/provider/usage"
 import { useDialog } from "@tui/ui/dialog"
 import { usePromptRef } from "../../context/prompt"
 import { DialogAlert } from "../../ui/dialog-alert"
@@ -39,7 +40,6 @@ import { DialogSelect } from "../../ui/dialog-select"
 import { useToast } from "../../ui/toast"
 import { DialogPrompts } from "../dialog-prompts"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
-import type { ProviderUsage } from "@/provider/usage"
 
 async function fetchUsageRecord(input: {
   baseUrl?: string
@@ -220,14 +220,6 @@ export function Prompt(props: PromptProps) {
     | undefined
   >(undefined)
 
-  const resolvePricingOptions = (providerID: string | undefined) => {
-    if (!providerID) return undefined
-    if (providerID === "openrouter" || providerID === "@openrouter/ai-sdk-provider") {
-      return { provider: providerID }
-    }
-    return undefined
-  }
-
   createEffect(() => {
     const msgs = messages()
     let cancelled = false
@@ -287,7 +279,7 @@ export function Prompt(props: PromptProps) {
     })
   })
 
-  // Calculate daily cost per model used in current session + burn rate
+  // Calculate daily cost per model used in current session
   createEffect(() => {
     const msgs = messages()
     const sessionID = props.sessionID
@@ -1048,8 +1040,8 @@ export function Prompt(props: PromptProps) {
               title: info.name ?? modelID,
               description: provider.name,
               category: provider.name,
-              disabled: provider.id === "arctic" && modelID.includes("-nano"),
-              footer: info.cost?.input === 0 && provider.id === "arctic" ? "Free" : undefined,
+              disabled: modelID.includes("-nano"),
+              footer: info.cost?.input === 0 ? "Free" : undefined,
             },
           ]
         })
@@ -1473,7 +1465,7 @@ export function Prompt(props: PromptProps) {
                 textColor={keybind.leader ? theme.textMuted : theme.text}
                 focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
                 minHeight={1}
-                maxHeight={20}
+                maxHeight={5}
                 onContentChange={() => {
                   const value = input.plainText
                   setStore("prompt", "input", value)

@@ -27,6 +27,7 @@ export async function maybeImportExternalAuth() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) return
   if (process.env.CI) return
   if (process.argv.some((arg) => ["-h", "--help", "-v", "--version"].includes(arg))) return
+  if (process.argv.includes("auth") && process.argv.includes("logout")) return
 
   const external = await Auth.external()
   const externalProviders = Object.keys(external)

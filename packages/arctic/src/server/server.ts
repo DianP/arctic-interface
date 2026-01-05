@@ -13,7 +13,6 @@ import { Hono } from "hono"
 import { describeRoute, generateSpecs, openAPIRouteHandler, resolver, validator } from "hono-openapi"
 import { upgradeWebSocket, websocket } from "hono/bun"
 import { cors } from "hono/cors"
-import { proxy } from "hono/proxy"
 import { stream, streamSSE } from "hono/streaming"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import { filter, mapValues, pipe, sortBy } from "remeda"
@@ -2722,15 +2721,7 @@ export namespace Server {
             })
           })
         },
-      )
-      .all("/*", async (c) => {
-        return proxy(`https://desktop.opencode.ai${c.req.path}`, {
-          ...c.req,
-          headers: {
-            host: "desktop.opencode.ai",
-          },
-        })
-      }),
+      ),
   )
 
   export async function openapi() {

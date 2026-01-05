@@ -1,11 +1,11 @@
-import { createMemo, createSignal } from "solid-js"
+import { Keybind } from "@/util/keybind"
 import { useLocal } from "@tui/context/local"
 import { useSync } from "@tui/context/sync"
-import { map, pipe, flatMap, entries, filter, sortBy, take } from "remeda"
-import { DialogSelect, type DialogSelectRef } from "@tui/ui/dialog-select"
 import { useDialog } from "@tui/ui/dialog"
+import { DialogSelect, type DialogSelectRef } from "@tui/ui/dialog-select"
+import { entries, filter, flatMap, map, pipe, sortBy, take } from "remeda"
+import { createMemo, createSignal } from "solid-js"
 import { createDialogProviderOptions, DialogProvider } from "./dialog-provider"
-import { Keybind } from "@/util/keybind"
 
 export function useConnected() {
   const sync = useSync()
@@ -113,11 +113,7 @@ export function DialogModel(props: { providerID?: string }) {
       ...recentOptions,
       ...pipe(
         sync.data.provider,
-        sortBy(
-          (provider) => provider.name === "OpenCode Zen",
-          (provider) => provider.id !== "arctic",
-          (provider) => provider.name,
-        ),
+        sortBy((provider) => provider.name),
         flatMap((provider) =>
           pipe(
             provider.models,
@@ -166,7 +162,6 @@ export function DialogModel(props: { providerID?: string }) {
               return true
             }),
             sortBy(
-              (x) => x.value.providerID === "opencode" && x.value.modelID === "zen",
               (x) => x.footer !== "Free",
               (x) => x.title,
             ),
