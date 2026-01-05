@@ -38,6 +38,30 @@ Arctic supports every major AI coding plan and API:
 
 [View all providers →](https://usearctic.sh/docs/providers)
 
+## Usage Screenshots
+
+Anthropic:
+
+![Anthropic Usage](https://www.usearctic.sh/_next/image?url=%2Fcc_usage.png&w=828&q=75)
+
+Codex:
+
+![Codex Usage](https://www.usearctic.sh/_next/image?url=%2Fcodex_usage.png&w=828&q=75)
+
+Antigravity:
+
+![Antigravity Usage](https://www.usearctic.sh/_next/image?url=%2Fantigravity_usage.png&w=828&q=75)
+
+GitHub Copilot:
+
+![GitHub Copilot Usage](https://www.usearctic.sh/_next/image?url=%2Fcopilot_usage.png&w=828&q=75)
+
+Z.AI:
+
+![Z.AI Usage](https://www.usearctic.sh/_next/image?url=%2Fzai_usage.png&w=828&q=75)
+
+Note: Some providers (like Qwen Code and Kimi for Coding) are not shown here, but their usage views are available in the TUI.
+
 ## Development
 
 ```bash
