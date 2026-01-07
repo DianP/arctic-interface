@@ -75,6 +75,48 @@ Arctic is open source and we'd love your input. Whether you have ideas, want to 
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
+&ensp;
+
+## FAQ
+
+**What if I come from Claude Code?**
+
+> Arctic automatically imports your Claude Code setup. Custom commands, subagents from `~/.claude/agents/`, and MCP server configurations work out of the box. Arctic reads Claude's configuration but doesn't modify it, so you can use both side by side.
+
+**What is different from OpenCode?**
+
+> Arctic supports 8+ coding plans (Claude Code, Codex, Gemini CLI, Antigravity, GitHub Copilot, Z.AI, Kimi, Amp Code) with built-in usage tracking and quota monitoring. Switch between Antigravity, Claude Code, and Codex efficiently and fast with real-time limit tracking for each provider. Lightweight CLI/TUI only with no desktop app or web interface, optimized for terminal-first users.
+
+**Does Arctic store my data or send it to external servers?**
+
+> No. Arctic runs entirely on your machine and connects directly to your AI provider. All conversations and data stay local. Arctic only communicates with the AI providers you authenticate with. The install script tracks anonymous installation counts (OS and architecture only) for project statistics, but no personal data or usage information is collected.
+
+**Can I use Arctic with my own API keys?**
+
+> Yes. Arctic supports direct API key usage for OpenAI, Anthropic, Google, Perplexity, Openrouter, Ollama, and more. Just authenticate with your preferred provider.
+
+**How do I switch between different AI models?**
+
+> Press `ctrl+p` to open the command palette, then select "Switch model". You can switch models mid-conversation without losing context.
+
+**Does Arctic work offline?**
+
+> Arctic requires internet to connect to AI providers. If you use a local provider like Ollama, you can use Arctic with local models without internet.
+
+**Can I use Arctic in my existing projects?**
+
+> Yes. Arctic works in any directory. Just run `arctic` in your project folder and it will use that as the working directory.
+
+**How do I customize keybindings?**
+
+> Create an `arctic.json` or `arctic.jsonc` file in `~/.config/arctic/` (global) or `<project>/.arctic/` (project-specific). See [configuration docs](https://usearctic.sh/docs/cli/config) for details.
+
+**What happens if I hit my usage limits?**
+
+> Arctic shows usage warnings when you approach limits (below 15% remaining). The TUI displays real-time usage so you can monitor and switch providers before hitting hard limits.
+
+&ensp;
+
 ## Learn More
 
 [Documentation](https://usearctic.sh/docs) • [GitHub](https://github.com/arctic-cli/interface) • [License](LICENSE)
