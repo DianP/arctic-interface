@@ -4,6 +4,7 @@ import { Provider } from "@/provider/provider"
 import { Session as SessionApi } from "@/session"
 import { TextAttributes } from "@opentui/core"
 import { render, useKeyboard, useRenderer, useSelectionHandler, useTerminalDimensions } from "@opentui/solid"
+import { DoubleClick } from "@tui/util/double-click"
 import { DialogAgent } from "@tui/component/dialog-agent"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogMcp } from "@tui/component/dialog-mcp"
@@ -211,6 +212,7 @@ function App() {
   let lastSelectionText = ""
   let lastMousePos = { x: 0, y: 0 }
   let lastCtrlCPress = 0
+  const multiClickDetector = DoubleClick.createMultiClick()
 
   onMount(() => {
     // Re-apply keyboard protocol modes after renderer setup.
@@ -279,6 +281,7 @@ function App() {
       lastSelectionText = ""
       setShowCopyButton(false)
       renderer.clearSelection()
+      multiClickDetector.reset()
       return
     }
 
@@ -770,6 +773,22 @@ function App() {
       backgroundColor={theme.background}
       onMouseMove={(evt) => {
         lastMousePos = { x: evt.x, y: evt.y }
+      }}
+      onMouseUp={(evt) => {
+        const selection = renderer.getSelection()
+        const hasSelection = selection && selection.isActive && selection.getSelectedText().length > 0
+
+        if (hasSelection) {
+          return
+        }
+
+        const clickCount = multiClickDetector.handleClick(evt.x, evt.y, Date.now())
+
+        if (clickCount === 2) {
+          DoubleClick.selectWordAtPosition(renderer, evt.x, evt.y)
+        } else if (clickCount === 3) {
+          DoubleClick.selectLineAtPosition(renderer, evt.x, evt.y)
+        }
       }}
     >
       <ExitConfirmationProvider exitConfirmation={exitConfirmation}>

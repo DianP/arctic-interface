@@ -132,4 +132,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## Learn More
 
-[Documentation](https://usearctic.sh/docs) • [GitHub](https://github.com/arctic-cli/interface) • [License](LICENSE)
+[Documentation](https://usearctic.sh/docs) • [GitHub](https://github.com/arctic-cli/interface) • [Discord](https://discord.gg/B4HqXxNynG) • [License](LICENSE)

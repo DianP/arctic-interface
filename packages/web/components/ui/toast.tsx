@@ -1,13 +1,14 @@
 "use client";
 
 import { Toast } from "@base-ui/react/toast";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  CircleAlertIcon,
-  CircleCheckIcon,
-  InfoIcon,
-  LoaderCircleIcon,
-  TriangleAlertIcon,
-} from "lucide-react";
+  Alert01Icon,
+  AlertCircleIcon,
+  CheckmarkCircle01Icon,
+  InformationCircleIcon,
+  Loading01Icon,
+} from "@hugeicons/core-free-icons";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -16,12 +17,12 @@ const toastManager = Toast.createToastManager();
 const anchoredToastManager = Toast.createToastManager();
 
 const TOAST_ICONS = {
-  error: CircleAlertIcon,
-  info: InfoIcon,
-  loading: LoaderCircleIcon,
-  success: CircleCheckIcon,
-  warning: TriangleAlertIcon,
-} as const;
+  error: AlertCircleIcon,
+  info: InformationCircleIcon,
+  loading: Loading01Icon,
+  success: CheckmarkCircle01Icon,
+  warning: Alert01Icon,
+} satisfies Record<string, (typeof AlertCircleIcon) | null>;
 
 type ToastPosition =
   | "top-left"
@@ -129,14 +130,19 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
             >
               <Toast.Content className="pointer-events-auto flex items-center justify-between gap-1.5 overflow-hidden px-3.5 py-3 text-sm transition-opacity duration-250 data-behind:pointer-events-none data-behind:opacity-0 data-expanded:opacity-100">
                 <div className="flex gap-2">
-                  {Icon && (
-                    <div
-                      className="[&>svg]:h-lh [&>svg]:w-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
-                      data-slot="toast-icon"
-                    >
-                      <Icon className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80" />
-                    </div>
-                  )}
+                      {Icon && (
+                        <div
+                          className="[&>svg]:h-lh [&>svg]:w-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+                          data-slot="toast-icon"
+                        >
+                          <HugeiconsIcon
+                            className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80"
+                            icon={Icon}
+                          />
+                        </div>
+                      )}
+
+
 
                   <div className="flex flex-col gap-0.5">
                     <Toast.Title
@@ -226,7 +232,11 @@ function AnchoredToasts() {
                           className="[&>svg]:h-lh [&>svg]:w-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                           data-slot="toast-icon"
                         >
-                          <Icon className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80" />
+                      <HugeiconsIcon
+                        className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80"
+                        icon={Icon}
+                      />
+
                         </div>
                       )}
 

@@ -85,7 +85,11 @@ test("headers are passed to transports when oauth is enabled (default)", async (
       // Both transports should have been created with headers
       expect(transportCalls.length).toBeGreaterThanOrEqual(1)
 
-      for (const call of transportCalls) {
+      // Filter to only the test server transports (not global config MCPs)
+      const testServerCalls = transportCalls.filter((call) => call.url === "https://example.com/mcp")
+      expect(testServerCalls.length).toBeGreaterThanOrEqual(1)
+
+      for (const call of testServerCalls) {
         expect(call.options.requestInit).toBeDefined()
         expect(call.options.requestInit?.headers).toEqual({
           Authorization: "Bearer test-token",
@@ -117,7 +121,11 @@ test("headers are passed to transports when oauth is explicitly disabled", async
 
       expect(transportCalls.length).toBeGreaterThanOrEqual(1)
 
-      for (const call of transportCalls) {
+      // Filter to only the test server transports (not global config MCPs)
+      const testServerCalls = transportCalls.filter((call) => call.url === "https://example.com/mcp")
+      expect(testServerCalls.length).toBeGreaterThanOrEqual(1)
+
+      for (const call of testServerCalls) {
         expect(call.options.requestInit).toBeDefined()
         expect(call.options.requestInit?.headers).toEqual({
           Authorization: "Bearer test-token",
@@ -144,7 +152,11 @@ test("no requestInit when headers are not provided", async () => {
 
       expect(transportCalls.length).toBeGreaterThanOrEqual(1)
 
-      for (const call of transportCalls) {
+      // Filter to only the test server transports (not global config MCPs)
+      const testServerCalls = transportCalls.filter((call) => call.url === "https://example.com/mcp")
+      expect(testServerCalls.length).toBeGreaterThanOrEqual(1)
+
+      for (const call of testServerCalls) {
         // No headers means requestInit should be undefined
         expect(call.options.requestInit).toBeUndefined()
       }

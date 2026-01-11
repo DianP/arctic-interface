@@ -10,6 +10,9 @@ describe("Permission.respond", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
+        // Disable permission bypass for this test
+        await Permission.setBypassEnabled(false)
+
         const sessionID = "test-session"
         const responses: string[] = []
 
@@ -77,6 +80,9 @@ describe("Permission.respond", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
+        // Disable permission bypass for this test
+        await Permission.setBypassEnabled(false)
+
         const sessionID1 = "session-1"
         const sessionID2 = "session-2"
         const responses: { sessionID: string; response: string }[] = []

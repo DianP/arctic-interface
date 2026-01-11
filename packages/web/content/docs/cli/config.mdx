@@ -28,6 +28,33 @@ export ARCTIC_CONFIG="/path/to/config.json"
 export ARCTIC_CONFIG_CONTENT='{"model":"openai/gpt-4o"}'
 ```
 
+## Backup config
+
+Export all Arctic configuration files as a ZIP archive for backup or migration:
+
+**TUI**: Use command palette or slash command:
+
+```
+/config-export
+```
+
+You'll be prompted for a save location. Supports:
+- Absolute paths: `/path/to/backup.zip`
+- Relative paths: `./backups/config.zip`
+- Home directory: `~/arctic-backup.zip`
+
+**What's included**:
+- Global config from `~/.config/arctic/`
+- Project config from `.arctic/` directories
+- Agents, commands, modes, and plugins
+- Package dependencies (package.json, bun.lock)
+- README with restore instructions
+
+**What's excluded**:
+- Auth tokens (for security)
+- Session data
+- Snapshots
+
 ## Minimal example
 
 ```jsonc

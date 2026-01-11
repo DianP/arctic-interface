@@ -1,6 +1,7 @@
 "use client"
 
-import { Github as GithubIcon } from "lucide-react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { GithubIcon } from "@hugeicons/core-free-icons"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
@@ -42,7 +43,7 @@ export function Navbar() {
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              <GithubIcon className="size-4" />
+              <HugeiconsIcon className="size-4" icon={GithubIcon} />
               <span>GitHub</span>
             </Link>
           </div>

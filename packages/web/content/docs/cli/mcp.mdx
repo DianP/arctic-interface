@@ -17,10 +17,99 @@ Arctic will ask you once per type (project/directory/global), and you can choose
 
 ## Add an MCP server
 
-MCP servers are configured in your Arctic config file (`~/.config/arctic/arctic.json` or `.jsonc`).
-After updating the config, restart Arctic (or reopen the TUI) to load the server.
+Use the `arctic mcp add` command to add MCP servers. By default, servers are added **globally** (available in all projects). Use `--local` to add to the current project only.
 
-### Remote MCP (Context7 example)
+### Quick Start
+
+```bash
+# Add global remote MCP with header auth
+arctic mcp add context7 https://mcp.context7.com/mcp --header "CONTEXT7_API_KEY: your-key"
+
+# Add global local MCP
+arctic mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem
+
+# Add project-specific MCP
+arctic mcp add myserver https://example.com/mcp --local
+```
+
+### Remote MCP with Headers
+
+For servers that use API key or token authentication:
+
+```bash
+arctic mcp add context7 https://mcp.context7.com/mcp \
+  --header "CONTEXT7_API_KEY: ctx7sk-your-key"
+```
+
+Multiple headers:
+
+```bash
+arctic mcp add myserver https://example.com/mcp \
+  --header "Authorization: Bearer token123" \
+  --header "X-Custom-Header: value"
+```
+
+**Important**: When using header authentication, `oauth: false` is automatically set to prevent OAuth detection.
+
+### Remote MCP with OAuth
+
+For servers that require OAuth authentication:
+
+```bash
+# With pre-registered client
+arctic mcp add myserver https://example.com/mcp --oauth \
+  --client-id "your-client-id" \
+  --client-secret "your-secret"
+
+# With dynamic registration
+arctic mcp add myserver https://example.com/mcp --oauth
+```
+
+Then authenticate:
+
+```bash
+arctic mcp auth myserver
+```
+
+### Local MCP (stdio)
+
+For local command-based MCP servers:
+
+```bash
+# Basic local server
+arctic mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem
+
+# With environment variables
+arctic mcp add myserver --env "API_KEY=value" -- bunx my-mcp-server
+```
+
+Everything after `--` is treated as the command to run.
+
+### Interactive Mode
+
+If you don't provide a URL or command, interactive mode starts:
+
+```bash
+arctic mcp add myserver
+```
+
+This walks you through the setup with prompts.
+
+### Global vs Local
+
+- **Global** (default): Server available in all projects
+  - Saved to `~/.config/arctic/arctic.json`
+  - Use for servers you want everywhere
+
+- **Local** (`--local` flag): Server only in current project
+  - Saved to project's `arctic.json`
+  - Use for project-specific servers
+
+### Manual Configuration
+
+You can also manually edit config files:
+
+**Global config** (`~/.config/arctic/arctic.json`):
 
 ```jsonc
 {
@@ -29,48 +118,22 @@ After updating the config, restart Arctic (or reopen the TUI) to load the server
       "type": "remote",
       "url": "https://mcp.context7.com/mcp",
       "headers": {
-        "CONTEXT7_API_KEY": "ctx7sk-REPLACE_ME"
-      }
+        "CONTEXT7_API_KEY": "ctx7sk-your-key"
+      },
+      "oauth": false
     }
   }
 }
 ```
 
-### Remote MCP with OAuth
-
-Use OAuth when the server requires it. If you have a client ID, add it; otherwise, `{}` enables dynamic
-client registration.
-
-```jsonc
-{
-  "mcp": {
-    "my-oauth-server": {
-      "type": "remote",
-      "url": "https://example.com/mcp",
-      "oauth": {
-        "clientId": "your-client-id",
-        "clientSecret": "optional-secret",
-        "scope": "optional scopes"
-      }
-    }
-  }
-}
-```
-
-Then run:
-
-```bash
-arctic mcp auth
-```
-
-### Local MCP
+**Local config** (`.arctic/arctic.jsonc` or `arctic.json`):
 
 ```jsonc
 {
   "mcp": {
     "filesystem": {
       "type": "local",
-      "command": ["arctic", "x", "@modelcontextprotocol/server-filesystem"],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem"],
       "environment": {
         "MCP_ROOT": "/path/to/scan"
       }
@@ -79,32 +142,124 @@ arctic mcp auth
 }
 ```
 
-### Optional fields
+### Optional Config Fields
 
-- `enabled`: disable a server on startup by setting `false`
-- `headers`: add custom headers for remote servers
-- `timeout`: tool discovery timeout in milliseconds (defaults to 5000)
-
-### Interactive helper
-
-```bash
-arctic mcp add
-```
-
-This walks you through a setup and prints a config snippet you can paste into your config file.
+- `enabled`: Set to `false` to disable a server on startup
+- `headers`: Custom headers for remote servers (object)
+- `oauth`: OAuth config or `false` to disable OAuth detection
+- `timeout`: Tool discovery timeout in ms (default: 5000)
+- `environment`: Environment variables for local servers (object)
 
 ## Commands
 
+### `arctic mcp add <name> [url]`
+
+Add an MCP server globally or locally.
+
+**Positional arguments:**
+- `<name>`: Name of the MCP server (required)
+- `[url]`: Remote server URL (optional, omit for local servers)
+
+**Options:**
+- `--local`: Add to project config instead of global config
+- `--header "KEY: VALUE"`: Add header (can be used multiple times)
+- `--oauth`: Enable OAuth authentication
+- `--client-id <id>`: OAuth client ID
+- `--client-secret <secret>`: OAuth client secret
+- `--scope <scopes>`: OAuth scopes to request
+- `--env "KEY=VALUE"`: Environment variable for local servers
+
+**Examples:**
+
 ```bash
-arctic mcp list
-arctic mcp add
-arctic mcp auth
-arctic mcp logout
+# Global remote with headers
+arctic mcp add context7 https://mcp.context7.com/mcp --header "API_KEY: key"
+
+# Local stdio server
+arctic mcp add fs -- npx -y @modelcontextprotocol/server-filesystem
+
+# Project-specific with OAuth
+arctic mcp add myserver https://example.com/mcp --oauth --local
 ```
 
-## What you can do
+### `arctic mcp list`
 
-- List configured servers
-- Add or remove servers
-- Authenticate OAuth‑based MCP servers
-- See available tools in the TUI status view
+List all configured MCP servers and their status.
+
+```bash
+arctic mcp list
+# or
+arctic mcp ls
+```
+
+Shows:
+- Server name
+- Connection status (connected, disabled, failed, needs auth)
+- Server URL or command
+- OAuth status if applicable
+
+### `arctic mcp remove <name>`
+
+Disable an MCP server by adding an override.
+
+```bash
+arctic mcp remove context7
+# or
+arctic mcp rm context7
+```
+
+This disables the server by adding `enabled: false` to your local config, which overrides any parent configs. To fully remove, delete the entry from the config file manually.
+
+### `arctic mcp auth [name]`
+
+Authenticate with an OAuth-enabled MCP server.
+
+```bash
+arctic mcp auth myserver
+```
+
+Opens your browser to complete the OAuth flow. If `name` is omitted, you'll be prompted to select from available OAuth servers.
+
+### `arctic mcp logout [name]`
+
+Remove OAuth credentials for an MCP server.
+
+```bash
+arctic mcp logout myserver
+```
+
+This removes stored OAuth tokens but keeps the server configuration. If `name` is omitted, you'll be prompted to select from servers with stored credentials.
+
+## Tips
+
+- **Use global by default**: Most MCP servers should be global so they're available everywhere
+- **Use `--local` for project-specific**: Only use `--local` when a server is specific to one project
+- **Header auth needs `oauth: false`**: When using `--header`, `oauth: false` is automatically set
+- **Check status**: Use `arctic mcp list` to see connection status and troubleshoot issues
+- **Layered configs**: Arctic merges configs from multiple locations (global, parent dirs, project)
+
+## Troubleshooting
+
+### Server shows as "disabled"
+
+The server has `enabled: false` in the config. Remove the entry or set `enabled: true`.
+
+### Server shows as "needs auth"
+
+The server requires OAuth authentication. Run:
+
+```bash
+arctic mcp auth <server-name>
+```
+
+### Server shows as "failed"
+
+Check the error message in `arctic mcp list`. Common issues:
+- Invalid URL or command
+- Missing dependencies for local servers
+- Network issues for remote servers
+- Missing `oauth: false` when using header authentication
+
+### Command hangs on `mcp list`
+
+If using header authentication, ensure `oauth: false` is set in the config. Remote servers try OAuth by default.

@@ -1,7 +1,8 @@
 "use client";
 
 import { Dialog as CommandDialogPrimitive } from "@base-ui/react/dialog";
-import { SearchIcon } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Search01Icon } from "@hugeicons/core-free-icons";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -129,7 +130,7 @@ function CommandInput({
         placeholder={placeholder}
         ref={inputRef}
         size="lg"
-        startAddon={<SearchIcon />}
+        startAddon={<HugeiconsIcon icon={Search01Icon} />}
         {...props}
       />
     </div>

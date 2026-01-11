@@ -1132,7 +1132,9 @@ export namespace Config {
   }
 
   export async function update(config: Info) {
-    const filepath = path.join(Instance.directory, "config.json")
+    const jsoncPath = path.join(Instance.directory, "arctic.jsonc")
+    const jsonPath = path.join(Instance.directory, "arctic.json")
+    const filepath = (await Bun.file(jsoncPath).exists()) ? jsoncPath : jsonPath
     const existing = await loadFile(filepath)
     await Bun.write(filepath, JSON.stringify(mergeDeep(existing, config), null, 2))
     await Instance.dispose()

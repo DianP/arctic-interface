@@ -1,6 +1,7 @@
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card"
 import { GridBackground } from "@/components/ui/grid-background"
-import { ArrowRight, Github as GithubIcon } from "lucide-react"
+import { ArrowRight01Icon, Discord, GithubIcon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import Image from "next/image"
 import Link from "next/link"
 import { CopyButton } from "./copy-button"
@@ -34,7 +35,7 @@ export default function HomePage() {
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <Link href="/docs" className="flex items-center gap-2 hover:text-foreground transition-colors">
                   Documentation
-                  <ArrowRight className="size-4" />
+                  <HugeiconsIcon className="size-4" icon={ArrowRight01Icon} />
                 </Link>
                 <span className="text-border">|</span>
                 <Link
@@ -43,8 +44,18 @@ export default function HomePage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-foreground transition-colors"
                 >
-                  <GithubIcon className="size-4" />
+                  <HugeiconsIcon className="size-5" icon={GithubIcon} />
                   GitHub
+                </Link>
+                <span className="text-border">|</span>
+                <Link
+                  href="https://discord.gg/B4HqXxNynG"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:text-foreground transition-colors"
+                >
+                  <HugeiconsIcon className="size-5" icon={Discord} />
+                  Discord
                 </Link>
               </div>
             </div>
