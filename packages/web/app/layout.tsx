@@ -1,15 +1,11 @@
 import { Analytics } from "@vercel/analytics/react"
 import { RootProvider } from "fumadocs-ui/provider/next"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
 import type { Metadata } from "next"
-import { Outfit } from "next/font/google"
 import Script from "next/script"
+import { ToastProvider } from "@/components/ui/toast"
 import "./global.css"
-
-const primary = Outfit({
-  subsets: ["latin"],
-  variable: "--font-primary",
-  display: "swap",
-})
 
 export const metadata: Metadata = {
   title: {
@@ -71,9 +67,11 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={primary.variable} suppressHydrationWarning>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
-        <RootProvider>{children}</RootProvider>
+        <RootProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </RootProvider>
         <Analytics />
       </body>
       <Script src="https://scripts.simpleanalyticscdn.com/latest.js" />

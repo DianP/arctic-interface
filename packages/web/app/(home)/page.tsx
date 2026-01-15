@@ -1,212 +1,233 @@
-import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card"
+import {
+  AmpCodeIcon,
+  AntigravityIcon,
+  ClaudeCodeIcon,
+  CodexIcon,
+  CopilotIcon,
+  GeminiIcon,
+  KimiIcon,
+  MinimaxIcon,
+  QwenIcon,
+  ZaiIcon,
+} from "@/components/provider-icons"
 import { GridBackground } from "@/components/ui/grid-background"
-import { ArrowRight01Icon, Discord, GithubIcon } from "@hugeicons/core-free-icons"
+import { ChartHistogramIcon, CodeIcon, FlashIcon, Globe02Icon, LockPasswordIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import Image from "next/image"
-import Link from "next/link"
-import { CopyButton } from "./copy-button"
+import { Redis } from "@upstash/redis"
 import { InstallSelector } from "./install-selector"
 import { Navbar } from "./navbar"
+import { WaitlistForm } from "./waitlist-form"
+
+type WaitlistState = {
+  status: "idle" | "success" | "invalid" | "duplicate" | "error"
+  message: string
+}
+
+async function joinWaitlist(_prevState: WaitlistState, formData: FormData): Promise<WaitlistState> {
+  "use server"
+
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase()
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { status: "invalid", message: "Enter a valid email address." }
+  }
+
+  try {
+    const redis = Redis.fromEnv()
+    const added = await redis.sadd("waitlist:emails", email)
+
+    if (added === 1) {
+      await redis.incr("waitlist:total")
+      return { status: "success", message: "You're on the waitlist." }
+    }
+
+    return { status: "duplicate", message: "You're already on the waitlist." }
+  } catch (error) {
+    console.error("Waitlist signup error:", error)
+    return { status: "error", message: "Something went wrong. Please try again." }
+  }
+}
 
 export default function HomePage() {
-  const installCommandMacLinux = "curl -fsSL https://usearctic.sh/install | bash"
-
   return (
-    <div className="min-h-screen w-full overflow-x-hidden antialiased">
+    <div className="min-h-screen w-full overflow-x-hidden antialiased relative">
+      <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 right-0">
+        <div className="absolute inset-y-0 left-16 w-px bg-[hsl(0,4%,23%)]" />
+        <div className="absolute inset-y-0 right-16 w-px bg-[hsl(0,4%,23%)]" />
+      </div>
       <Navbar />
       <GridBackground className="relative">
-        <section className="px-6 pt-32 pb-20 md:pt-48 md:pb-32 relative z-10">
-          <div className="mx-auto max-w-5xl">
-            <div className="text-center space-y-8">
-              <h1 className="text-6xl md:text-8xl font-semibold tracking-tight text-foreground/95 leading-[0.95] md:leading-[0.95]">
-                Arctic
-              </h1>
-              <p className="text-xl md:text-2xl text-muted-foreground/90 max-w-2xl mx-auto font-normal tracking-tight leading-relaxed">
-                A unified interface for every AI coding plan.
-                <br className="hidden md:block" />
-                See your limits. Stay in control.
-              </p>
-            </div>
+        <section className="px-6 pt-32 pb-16 md:pt-48 md:pb-20 relative z-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col items-center text-center space-y-12">
+              <div className="space-y-6 max-w-4xl">
+                <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-foreground/95 leading-[0.95] md:leading-[0.95]">
+                  Arctic
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground/90 font-normal tracking-tight leading-relaxed">
+                  Open source AI coding agent focused on model and provider fast switching and usage limit tracking.
+                </p>
+              </div>
 
-            <div className="mt-12 flex flex-col items-center gap-6">
-              <div className="w-full max-w-2xl relative z-20">
+              <div className="relative z-20 w-full max-w-2xl">
                 <InstallSelector />
               </div>
-              <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                <Link href="/docs" className="flex items-center gap-2 hover:text-foreground transition-colors">
-                  Documentation
-                  <HugeiconsIcon className="size-4" icon={ArrowRight01Icon} />
-                </Link>
-                <span className="text-border">|</span>
-                <Link
-                  href="https://github.com/arctic-cli/interface"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 hover:text-foreground transition-colors"
-                >
-                  <HugeiconsIcon className="size-5" icon={GithubIcon} />
-                  GitHub
-                </Link>
-                <span className="text-border">|</span>
-                <Link
-                  href="https://discord.gg/B4HqXxNynG"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 hover:text-foreground transition-colors"
-                >
-                  <HugeiconsIcon className="size-5" icon={Discord} />
-                  Discord
-                </Link>
+
+              <div className="space-y-6 w-full max-w-4xl">
+                <p className="text-sm text-muted-foreground/80 uppercase tracking-wider font-medium">
+                  Supports all major AI coding plans
+                </p>
+                <div className="flex flex-wrap justify-center gap-4">
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <CopilotIcon />
+                    <span className="text-sm font-medium">Copilot</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <AntigravityIcon />
+                    <span className="text-sm font-medium">Antigravity</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <CodexIcon />
+                    <span className="text-sm font-medium">Codex</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <ClaudeCodeIcon />
+                    <span className="text-sm font-medium">Claude Code</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <GeminiIcon />
+                    <span className="text-sm font-medium">Gemini CLI</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <KimiIcon />
+                    <span className="text-sm font-medium">Kimi</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <ZaiIcon />
+                    <span className="text-sm font-medium">Z.ai</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <AmpCodeIcon />
+                    <span className="text-sm font-medium">Amp Code</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <QwenIcon />
+                    <span className="text-sm font-medium">Qwen</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border border-border/50">
+                    <MinimaxIcon />
+                    <span className="text-sm font-medium">Minimax</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full mt-8">
+                <div className="rounded-2xl overflow-hidden border border-border/50 shadow-2xl shadow-black/5">
+                  <video src="/arctic.mp4" autoPlay playsInline loop muted preload="auto" className="w-full h-auto">
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
               </div>
             </div>
           </div>
         </section>
       </GridBackground>
 
-      <section className="px-6 pb-32 relative z-10">
-        <div className="mx-auto max-w-6xl">
-          <div className="rounded-2xl overflow-hidden border border-border/50 shadow-2xl shadow-black/5">
-            <video src="/arctic.mp4" autoPlay playsInline loop muted preload="auto" className="w-full h-auto">
-              Your browser does not support the video tag.
-            </video>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 py-32 bg-muted/20">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-16 md:gap-24 items-center">
-            <div className="space-y-6 order-2 md:order-1">
-              <div className="inline-block px-3 py-1 rounded-full bg-foreground/5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Universal
-              </div>
-              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
-                Works with all your coding plans.
-              </h2>
-              <p className="text-lg text-muted-foreground/80 leading-relaxed">
-                Codex. Claude Code. Gemini. Antigravity. GitHub Copilot. Every major AI coding plan in one place. Switch
-                providers instantly without losing your context or workflow.
-              </p>
-              <div className="pt-2 flex flex-wrap gap-2">
-                {["Codex", "Claude Code", "Gemini", "Antigravity", "Copilot", "Z.ai", "Kimi"].map((provider) => (
-                  <span
-                    key={provider}
-                    className="px-3 py-1.5 rounded-full bg-background/80 border border-border/50 text-xs font-medium text-muted-foreground"
-                  >
-                    {provider}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-2xl overflow-hidden border border-border/50 shadow-xl order-1 md:order-2">
-              <Image
-                src="/session_interface.png"
-                alt="Arctic Session Interface"
-                width={1200}
-                height={800}
-                className="w-full h-auto"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 py-32 bg-muted/20">
-        <div className="mx-auto max-w-5xl space-y-16">
-          <div className="text-center space-y-4">
-            <div className="inline-block px-3 py-1 rounded-full bg-foreground/5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Live usage tracking
-            </div>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight max-w-3xl mx-auto">
-              See exactly how much you have left on each plan.
-            </h2>
-            <p className="text-lg text-muted-foreground/80 max-w-2xl mx-auto">
-              Arctic fetches and displays usage limits for all your subscription-based coding plans. Track requests,
-              tokens, and quotas in real-time.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8">
-            {[
-              { name: "Claude Code", img: "/cc_usage.png", desc: "Daily message limits" },
-              { name: "Gemini CLI", img: "/google_usage.png", desc: "Request quotas" },
-            ].map((provider) => (
-              <Card key={provider.name} className="group overflow-hidden transition-all hover:shadow-lg">
-                <CardHeader className="border-b">
-                  <CardTitle>{provider.name}</CardTitle>
-                  <CardDescription>{provider.desc}</CardDescription>
-                </CardHeader>
-                <CardPanel className="p-6">
-                  <Image
-                    src={provider.img}
-                    alt={`${provider.name} Usage Limits`}
-                    width={800}
-                    height={400}
-                    className="w-full rounded-lg"
-                  />
-                </CardPanel>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+      <div className="px-16">
+        <div className="h-px w-full bg-[hsl(0,4%,23%)]" />
+      </div>
 
       <section className="px-6 py-32">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-16 md:gap-24 items-center">
-            <div className="rounded-2xl overflow-hidden border border-border/50 shadow-xl">
-              <Image src="/stats.png" alt="Arctic Stats" width={1200} height={800} className="w-full h-auto" />
+        <div className="mx-auto max-w-7xl">
+          <div className="space-y-12">
+            <div className="space-y-4">
+              <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">FAQ</h2>
+              <p className="text-lg text-muted-foreground">Common questions about Arctic.</p>
             </div>
-            <div className="space-y-6">
-              <div className="inline-block px-3 py-1 rounded-full bg-foreground/5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Insights
+            <div className="space-y-8">
+              <div className="flex gap-4 items-start">
+                <HugeiconsIcon className="size-6 text-foreground shrink-0 mt-1" icon={FlashIcon} />
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Can I switch between different accounts?</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Yes. Switch instantly between personal and enterprise accounts, or between different AI providers,
+                    without leaving your terminal.
+                  </p>
+                </div>
               </div>
-              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
-                Track your usage.
-                <br />
-                Know what you spend.
-              </h2>
-              <p className="text-lg text-muted-foreground/80 leading-relaxed">
-                Run <code className="px-2 py-1 rounded bg-muted text-sm font-mono">arctic stats</code> to see your
-                complete usage breakdown. Track costs, tokens, and requests across all your AI providers. Understand
-                your patterns and optimize your spending.
-              </p>
+              <div className="flex gap-4 items-start">
+                <HugeiconsIcon className="size-6 text-foreground shrink-0 mt-1" icon={ChartHistogramIcon} />
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Can I see my usage limits while coding?</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Yes. Arctic displays real-time usage limits, quotas, and remaining requests for all your AI
+                    subscriptions directly in your terminal.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start">
+                <HugeiconsIcon className="size-6 text-foreground shrink-0 mt-1" icon={LockPasswordIcon} />
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Is my code private?</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Yes. Arctic runs entirely on your machine. No proxies, no data collection, no training on your code.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start">
+                <HugeiconsIcon className="size-6 text-foreground shrink-0 mt-1" icon={Globe02Icon} />
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Which AI providers does Arctic support?</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Arctic supports coding plans like Claude Code, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai,
+                    Kimi, and Amp Code. For API access, Arctic supports 75+ providers including Anthropic, OpenAI,
+                    Google, OpenRouter, Groq, DeepSeek, and any OpenAI-compatible endpoint.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start">
+                <HugeiconsIcon className="size-6 text-foreground shrink-0 mt-1" icon={CodeIcon} />
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Where does Arctic run?</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Arctic is a terminal-based AI coding agent. Run it directly in your terminal on Linux, macOS, or
+                    Windows.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="px-6 py-32">
-        <div className="mx-auto max-w-3xl text-center space-y-8">
-          <div className="inline-block px-3 py-1 rounded-full bg-foreground/5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Private by design
-          </div>
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">Your code stays yours.</h2>
-          <p className="text-lg text-muted-foreground/80 leading-relaxed max-w-2xl mx-auto">
-            Arctic runs entirely on your machine. No proxies. No data collection. No training on your code. Direct
-            connection from you to your AI provider.
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+            What makes Arctic different from OpenCode?
+          </h2>
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            While OpenCode focuses on being an open source AI coding agent, Arctic is built specifically for developers
+            who need to manage multiple AI subscriptions and accounts. Arctic lets you switch between personal and
+            enterprise accounts, see your usage limits in real-time, and track your spending across all providers
+            without leaving your terminal.
           </p>
-          <div className="pt-4">
-            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-background border border-border/50 text-sm font-medium">
-              <span className="text-muted-foreground">You</span>
-              <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-              <span className="text-foreground">AI Provider</span>
-            </div>
-          </div>
         </div>
       </section>
 
-      <GridBackground className="border-t border-border/50">
+      <div className="px-16">
+        <div className="h-px w-full bg-[hsl(0,4%,23%)]" />
+      </div>
+
+      <GridBackground className="">
         <section className="px-6 py-32">
-          <div className="mx-auto max-w-3xl text-center space-y-10">
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">Get started in seconds.</h2>
-            <div className="flex justify-center">
-              <div className="w-full max-w-2xl">
-                <CopyButton command={installCommandMacLinux} />
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">macOS and Linux supported</p>
+          <div className="mx-auto max-w-7xl text-center space-y-8">
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">Join the waitlist.</h2>
+            <p className="text-lg text-muted-foreground">
+              Get early access updates and release notes straight to your inbox.
+            </p>
+            <WaitlistForm action={joinWaitlist} />
           </div>
         </section>
       </GridBackground>

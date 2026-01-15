@@ -10,10 +10,10 @@ export function GridBackground({ children, className }: GridBackgroundProps) {
         className="absolute inset-0 dark:hidden"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px)",
+            "linear-gradient(oklch(from var(--foreground) l c h / 0.02) 1px, transparent 1px), linear-gradient(90deg, oklch(from var(--foreground) l c h / 0.02) 1px, transparent 1px)",
           backgroundSize: "40px 40px",
-          maskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 0%, transparent 100%)",
-          WebkitMaskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 0%, transparent 100%)",
+          maskImage: "radial-gradient(ellipse 60% 22% at 50% 24%, black 0%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 60% 22% at 50% 24%, black 0%, transparent 100%)",
         }}
       />
 
@@ -21,10 +21,10 @@ export function GridBackground({ children, className }: GridBackgroundProps) {
         className="absolute inset-0 hidden dark:block"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+            "linear-gradient(oklch(from var(--foreground) l c h / 0.03) 1px, transparent 1px), linear-gradient(90deg, oklch(from var(--foreground) l c h / 0.03) 1px, transparent 1px)",
           backgroundSize: "40px 40px",
-          maskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 0%, transparent 100%)",
-          WebkitMaskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 0%, transparent 100%)",
+          maskImage: "radial-gradient(ellipse 60% 22% at 50% 24%, black 0%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 60% 22% at 50% 24%, black 0%, transparent 100%)",
         }}
       />
 

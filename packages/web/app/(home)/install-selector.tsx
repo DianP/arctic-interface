@@ -63,12 +63,12 @@ export function InstallSelector() {
 
   return (
     <div className="group relative inline-flex w-full flex-col rounded-lg border border-input bg-background shadow-xs ring-ring/24 transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] hover:border-ring hover:ring-[3px] dark:before:shadow-[0_-1px_--theme(--color-white/8%)]">
-      <div className="flex items-center gap-1 border-b border-border/50 px-4 py-2">
+      <div className="flex items-center gap-1 border-b border-border/50 px-2 sm:px-4 py-2 overflow-x-auto">
         {(Object.keys(INSTALL_COMMANDS) as InstallMethod[]).map((m) => (
           <button
             key={m}
             onClick={() => setMethod(m)}
-            className={`relative px-3 py-1 text-xs font-mono transition-colors ${
+            className={`relative px-2 sm:px-3 py-1 text-xs font-mono transition-colors whitespace-nowrap ${
               method === m ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -77,13 +77,13 @@ export function InstallSelector() {
           </button>
         ))}
       </div>
-      <button onClick={copy} className="flex items-center justify-between gap-3 px-4 py-3 transition-colors">
-        <code className="flex-1 text-left font-mono text-sm text-foreground leading-none">
+      <button onClick={copy} className="flex items-center justify-between gap-3 px-3 sm:px-4 py-3 transition-colors overflow-x-auto">
+        <code className="flex-1 text-left font-mono text-xs sm:text-sm text-foreground leading-none whitespace-nowrap">
           {INSTALL_COMMANDS[method]}
         </code>
         <div className="shrink-0">
           {copied ? (
-            <HugeiconsIcon className="size-5 text-green-600 dark:text-green-500" icon={Tick01Icon} />
+            <HugeiconsIcon className="size-5 text-chart-4" icon={Tick01Icon} />
           ) : (
             <CopyIcon className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
           )}

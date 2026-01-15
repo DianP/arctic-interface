@@ -21,7 +21,7 @@ export function CopyButton({ command }: { command: string }) {
       <code className="flex-1 text-left font-mono text-sm text-foreground leading-none">{command}</code>
       <div className="shrink-0">
         {copied ? (
-          <HugeiconsIcon className="size-4 text-green-600 dark:text-green-500" icon={Tick01Icon} />
+          <HugeiconsIcon className="size-4 text-chart-4" icon={Tick01Icon} />
         ) : (
           <HugeiconsIcon
             className="size-4 text-muted-foreground group-hover:text-foreground transition-colors"
