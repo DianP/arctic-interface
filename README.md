@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://www.usearctic.sh/arctic-logo.png" alt="Arctic logo">
+  <img src="https://www.usearctic.sh/arctic-logo.png" alt="Arctic logo" width="200">
 </p>
 <p align="center">The open source AI coding agent with usage tracking.</p>
 <p align="center">
