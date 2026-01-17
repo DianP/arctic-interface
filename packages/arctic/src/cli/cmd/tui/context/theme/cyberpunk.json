@@ -1,0 +1,221 @@
+{
+  "$schema": "https://usearctic.sh/theme.json",
+  "defs": {
+    "neonPink": "#ff006e",
+    "neonBlue": "#00d9ff",
+    "neonPurple": "#b967ff",
+    "neonGreen": "#05ffa1",
+    "neonYellow": "#fffb00",
+    "neonOrange": "#ff6c11",
+    "darkPurple": "#240046",
+    "deepPurple": "#3c096c",
+    "text": "#e0e0e0",
+    "textDim": "#9d4edd"
+  },
+  "theme": {
+    "primary": {
+      "dark": "neonPink",
+      "light": "#c9004f"
+    },
+    "secondary": {
+      "dark": "neonBlue",
+      "light": "#00a8cc"
+    },
+    "accent": {
+      "dark": "neonPurple",
+      "light": "#9554d9"
+    },
+    "error": {
+      "dark": "neonOrange",
+      "light": "#cc5609"
+    },
+    "warning": {
+      "dark": "neonYellow",
+      "light": "#ccc800"
+    },
+    "success": {
+      "dark": "neonGreen",
+      "light": "#04cc81"
+    },
+    "info": {
+      "dark": "neonBlue",
+      "light": "#00a8cc"
+    },
+    "text": {
+      "dark": "text",
+      "light": "#1a1a1a"
+    },
+    "textMuted": {
+      "dark": "textDim",
+      "light": "#7d4edd"
+    },
+    "background": {
+      "dark": "none",
+      "light": "none"
+    },
+    "backgroundPanel": {
+      "dark": "#240046",
+      "light": "#f5e6ff"
+    },
+    "backgroundElement": {
+      "dark": "rgba(140, 100, 180, 0.12)",
+      "light": "rgba(220, 190, 255, 0.12)"
+    },
+    "backgroundMenu": {
+      "dark": "#3c096c",
+      "light": "#ead4ff"
+    },
+    "border": {
+      "dark": "neonPurple",
+      "light": "#9554d9"
+    },
+    "borderActive": {
+      "dark": "neonPink",
+      "light": "#c9004f"
+    },
+    "borderSubtle": {
+      "dark": "deepPurple",
+      "light": "#c9a3ff"
+    },
+    "diffAdded": {
+      "dark": "neonGreen",
+      "light": "#04cc81"
+    },
+    "diffRemoved": {
+      "dark": "neonOrange",
+      "light": "#cc5609"
+    },
+    "diffContext": {
+      "dark": "textDim",
+      "light": "#7d4edd"
+    },
+    "diffHunkHeader": {
+      "dark": "neonPink",
+      "light": "#c9004f"
+    },
+    "diffHighlightAdded": {
+      "dark": "#2bffb8",
+      "light": "#04cc81"
+    },
+    "diffHighlightRemoved": {
+      "dark": "#ff8844",
+      "light": "#cc5609"
+    },
+    "diffAddedBg": {
+      "dark": "rgba(5, 255, 161, 0.15)",
+      "light": "rgba(4, 204, 129, 0.2)"
+    },
+    "diffRemovedBg": {
+      "dark": "rgba(255, 108, 17, 0.15)",
+      "light": "rgba(204, 86, 9, 0.2)"
+    },
+    "diffContextBg": {
+      "dark": "none",
+      "light": "none"
+    },
+    "diffLineNumber": {
+      "dark": "textDim",
+      "light": "#7d4edd"
+    },
+    "diffAddedLineNumberBg": {
+      "dark": "rgba(5, 255, 161, 0.2)",
+      "light": "rgba(4, 204, 129, 0.25)"
+    },
+    "diffRemovedLineNumberBg": {
+      "dark": "rgba(255, 108, 17, 0.2)",
+      "light": "rgba(204, 86, 9, 0.25)"
+    },
+    "markdownText": {
+      "dark": "text",
+      "light": "#1a1a1a"
+    },
+    "markdownHeading": {
+      "dark": "neonPink",
+      "light": "#c9004f"
+    },
+    "markdownLink": {
+      "dark": "neonBlue",
+      "light": "#00a8cc"
+    },
+    "markdownLinkText": {
+      "dark": "neonPurple",
+      "light": "#9554d9"
+    },
+    "markdownCode": {
+      "dark": "neonGreen",
+      "light": "#04cc81"
+    },
+    "markdownBlockQuote": {
+      "dark": "textDim",
+      "light": "#7d4edd"
+    },
+    "markdownEmph": {
+      "dark": "neonPink",
+      "light": "#c9004f"
+    },
+    "markdownStrong": {
+      "dark": "neonYellow",
+      "light": "#ccc800"
+    },
+    "markdownHorizontalRule": {
+      "dark": "neonPurple",
+      "light": "#9554d9"
+    },
+    "markdownListItem": {
+      "dark": "neonPink",
+      "light": "#c9004f"
+    },
+    "markdownListEnumeration": {
+      "dark": "neonBlue",
+      "light": "#00a8cc"
+    },
+    "markdownImage": {
+      "dark": "neonBlue",
+      "light": "#00a8cc"
+    },
+    "markdownImageText": {
+      "dark": "neonPurple",
+      "light": "#9554d9"
+    },
+    "markdownCodeBlock": {
+      "dark": "text",
+      "light": "#1a1a1a"
+    },
+    "syntaxComment": {
+      "dark": "textDim",
+      "light": "#7d4edd"
+    },
+    "syntaxKeyword": {
+      "dark": "neonPink",
+      "light": "#c9004f"
+    },
+    "syntaxFunction": {
+      "dark": "neonBlue",
+      "light": "#00a8cc"
+    },
+    "syntaxVariable": {
+      "dark": "neonPurple",
+      "light": "#9554d9"
+    },
+    "syntaxString": {
+      "dark": "neonGreen",
+      "light": "#04cc81"
+    },
+    "syntaxNumber": {
+      "dark": "neonYellow",
+      "light": "#ccc800"
+    },
+    "syntaxType": {
+      "dark": "neonBlue",
+      "light": "#00a8cc"
+    },
+    "syntaxOperator": {
+      "dark": "textDim",
+      "light": "#7d4edd"
+    },
+    "syntaxPunctuation": {
+      "dark": "text",
+      "light": "#1a1a1a"
+    }
+  }
+}

@@ -1,0 +1,220 @@
+{
+  "$schema": "https://usearctic.sh/theme.json",
+  "defs": {
+    "lavenderPurple": "#c8b6ff",
+    "softPink": "#ffc6ff",
+    "pastelBlue": "#a0c4ff",
+    "mintCream": "#caffbf",
+    "peachPuff": "#ffd6a5",
+    "lilac": "#d4a5d8",
+    "babyBlue": "#bde0fe",
+    "text": "#2b2d42",
+    "textMuted": "#8d99ae"
+  },
+  "theme": {
+    "primary": {
+      "dark": "lavenderPurple",
+      "light": "#9f92cc"
+    },
+    "secondary": {
+      "dark": "softPink",
+      "light": "#cc9ecc"
+    },
+    "accent": {
+      "dark": "pastelBlue",
+      "light": "#809dcc"
+    },
+    "error": {
+      "dark": "#ff6b9d",
+      "light": "#cc5579"
+    },
+    "warning": {
+      "dark": "peachPuff",
+      "light": "#ccaa84"
+    },
+    "success": {
+      "dark": "mintCream",
+      "light": "#a1cc99"
+    },
+    "info": {
+      "dark": "babyBlue",
+      "light": "#97b3ca"
+    },
+    "text": {
+      "dark": "#2b2d42",
+      "light": "#2b2d42"
+    },
+    "textMuted": {
+      "dark": "textMuted",
+      "light": "#8d99ae"
+    },
+    "background": {
+      "dark": "none",
+      "light": "none"
+    },
+    "backgroundPanel": {
+      "dark": "#f8f9ff",
+      "light": "#f8f9ff"
+    },
+    "backgroundElement": {
+      "dark": "rgba(230, 235, 250, 0.12)",
+      "light": "rgba(230, 235, 250, 0.12)"
+    },
+    "backgroundMenu": {
+      "dark": "#eef1ff",
+      "light": "#eef1ff"
+    },
+    "border": {
+      "dark": "lavenderPurple",
+      "light": "#9f92cc"
+    },
+    "borderActive": {
+      "dark": "softPink",
+      "light": "#cc9ecc"
+    },
+    "borderSubtle": {
+      "dark": "#e0e5f5",
+      "light": "#e0e5f5"
+    },
+    "diffAdded": {
+      "dark": "mintCream",
+      "light": "#a1cc99"
+    },
+    "diffRemoved": {
+      "dark": "#ff6b9d",
+      "light": "#cc5579"
+    },
+    "diffContext": {
+      "dark": "textMuted",
+      "light": "#8d99ae"
+    },
+    "diffHunkHeader": {
+      "dark": "lavenderPurple",
+      "light": "#9f92cc"
+    },
+    "diffHighlightAdded": {
+      "dark": "#d4ffd4",
+      "light": "#a1cc99"
+    },
+    "diffHighlightRemoved": {
+      "dark": "#ffb3c6",
+      "light": "#cc5579"
+    },
+    "diffAddedBg": {
+      "dark": "rgba(202, 255, 191, 0.2)",
+      "light": "rgba(161, 204, 153, 0.25)"
+    },
+    "diffRemovedBg": {
+      "dark": "rgba(255, 107, 157, 0.2)",
+      "light": "rgba(204, 85, 121, 0.25)"
+    },
+    "diffContextBg": {
+      "dark": "none",
+      "light": "none"
+    },
+    "diffLineNumber": {
+      "dark": "textMuted",
+      "light": "#8d99ae"
+    },
+    "diffAddedLineNumberBg": {
+      "dark": "rgba(202, 255, 191, 0.25)",
+      "light": "rgba(161, 204, 153, 0.3)"
+    },
+    "diffRemovedLineNumberBg": {
+      "dark": "rgba(255, 107, 157, 0.25)",
+      "light": "rgba(204, 85, 121, 0.3)"
+    },
+    "markdownText": {
+      "dark": "text",
+      "light": "#2b2d42"
+    },
+    "markdownHeading": {
+      "dark": "lavenderPurple",
+      "light": "#9f92cc"
+    },
+    "markdownLink": {
+      "dark": "pastelBlue",
+      "light": "#809dcc"
+    },
+    "markdownLinkText": {
+      "dark": "softPink",
+      "light": "#cc9ecc"
+    },
+    "markdownCode": {
+      "dark": "mintCream",
+      "light": "#a1cc99"
+    },
+    "markdownBlockQuote": {
+      "dark": "textMuted",
+      "light": "#8d99ae"
+    },
+    "markdownEmph": {
+      "dark": "softPink",
+      "light": "#cc9ecc"
+    },
+    "markdownStrong": {
+      "dark": "lavenderPurple",
+      "light": "#9f92cc"
+    },
+    "markdownHorizontalRule": {
+      "dark": "lilac",
+      "light": "#a884ac"
+    },
+    "markdownListItem": {
+      "dark": "lavenderPurple",
+      "light": "#9f92cc"
+    },
+    "markdownListEnumeration": {
+      "dark": "pastelBlue",
+      "light": "#809dcc"
+    },
+    "markdownImage": {
+      "dark": "pastelBlue",
+      "light": "#809dcc"
+    },
+    "markdownImageText": {
+      "dark": "softPink",
+      "light": "#cc9ecc"
+    },
+    "markdownCodeBlock": {
+      "dark": "text",
+      "light": "#2b2d42"
+    },
+    "syntaxComment": {
+      "dark": "textMuted",
+      "light": "#8d99ae"
+    },
+    "syntaxKeyword": {
+      "dark": "lavenderPurple",
+      "light": "#9f92cc"
+    },
+    "syntaxFunction": {
+      "dark": "pastelBlue",
+      "light": "#809dcc"
+    },
+    "syntaxVariable": {
+      "dark": "softPink",
+      "light": "#cc9ecc"
+    },
+    "syntaxString": {
+      "dark": "mintCream",
+      "light": "#a1cc99"
+    },
+    "syntaxNumber": {
+      "dark": "peachPuff",
+      "light": "#ccaa84"
+    },
+    "syntaxType": {
+      "dark": "babyBlue",
+      "light": "#97b3ca"
+    },
+    "syntaxOperator": {
+      "dark": "textMuted",
+      "light": "#8d99ae"
+    },
+    "syntaxPunctuation": {
+      "dark": "text",
+      "light": "#2b2d42"
+    }
+  }
+}

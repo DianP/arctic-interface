@@ -40,6 +40,7 @@ import { DialogSelect } from "../../ui/dialog-select"
 import { useToast } from "../../ui/toast"
 import { DialogPrompts } from "../dialog-prompts"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
+import { DialogModel } from "../dialog-model"
 
 async function fetchUsageRecord(input: {
   baseUrl?: string
@@ -568,6 +569,14 @@ export function Prompt(props: PromptProps) {
         onSelect: async (dialog) => {
           await DialogPrompts.show(dialog, toast, "delete", input.plainText)
           safeFocusInput()
+        },
+      },
+      {
+        title: "Select model",
+        value: "prompt.model",
+        category: "Model",
+        onSelect: (dialog) => {
+          dialog.replace(() => <DialogModel />)
         },
       },
       {
@@ -1667,7 +1676,13 @@ export function Prompt(props: PromptProps) {
             {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
           </text>
           <Show when={store.mode === "normal"}>
-            <box flexDirection="row" gap={1}>
+            <box
+              flexDirection="row"
+              gap={1}
+              onMouseUp={() => {
+                command.trigger("prompt.model")
+              }}
+            >
               <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
                 {displayModel().model}
               </text>

@@ -1,8 +1,9 @@
 import * as prompts from "@clack/prompts"
-import { Storage } from "../storage/storage"
-import { Config } from "../config/config"
-import path from "path"
+import fs from "fs/promises"
 import os from "os"
+import path from "path"
+import { Config } from "../config/config"
+import { Storage } from "../storage/storage"
 import { Log } from "../util/log"
 
 const log = Log.create({ service: "opencode-config-import" })
@@ -78,14 +79,40 @@ function mapThemeName(opencodeTheme: string): string | undefined {
 }
 
 async function getOpenCodeConfigPath(): Promise<string | undefined> {
-  const configDir = path.join(os.homedir(), ".config", "opencode")
   const configFiles = ["opencode.json", "opencode.jsonc"]
 
+  let currentDir = process.cwd()
+  const root = path.parse(currentDir).root
+
+  while (currentDir !== root) {
+    const opencodeDir = path.join(currentDir, ".opencode")
+
+    try {
+      const stat = await fs.stat(opencodeDir)
+      if (stat.isDirectory()) {
+        for (const file of configFiles) {
+          const filepath = path.join(opencodeDir, file)
+          const exists = await Bun.file(filepath).exists()
+          if (exists) {
+            log.debug("found project opencode config", { path: filepath })
+            return filepath
+          }
+        }
+      }
+    } catch (err) {
+    }
+
+    const parentDir = path.dirname(currentDir)
+    if (parentDir === currentDir) break
+    currentDir = parentDir
+  }
+
+  const globalConfigDir = path.join(os.homedir(), ".config", "opencode")
   for (const file of configFiles) {
-    const filepath = path.join(configDir, file)
+    const filepath = path.join(globalConfigDir, file)
     const exists = await Bun.file(filepath).exists()
     if (exists) {
-      log.debug("found opencode config", { path: filepath })
+      log.debug("found global opencode config", { path: filepath })
       return filepath
     }
   }

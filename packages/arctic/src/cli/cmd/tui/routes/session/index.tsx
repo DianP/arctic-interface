@@ -1457,68 +1457,11 @@ function UserMessage(props: {
   )
 }
 
-function StreamingIndicator(props: { interruptCount: number }) {
-  const { theme } = useTheme()
-  const [tick, setTick] = createSignal(0)
-
-  const streamingTexts = [
-    "Streaming...",
-    "Processing...",
-    "Generating...",
-    "Thinking...",
-    "Computing...",
-    "Working...",
-    "Analyzing...",
-  ]
-
-  const [streamingText] = createSignal(streamingTexts[Math.floor(Math.random() * streamingTexts.length)])
-
-  createEffect(() => {
-    const timer = setInterval(() => {
-      setTick((t) => (t + 1) % 12)
-    }, 100)
-    onCleanup(() => clearInterval(timer))
-  })
-
-  const getCharColor = (index: number) => {
-    const wavePosition = tick()
-    const distance = Math.abs((index - wavePosition + 12) % 12)
-    if (distance <= 2) {
-      const intensity = 1 - distance / 3
-      return RGBA.fromValues(
-        theme.textMuted.r + (theme.primary.r - theme.textMuted.r) * intensity,
-        theme.textMuted.g + (theme.primary.g - theme.textMuted.g) * intensity,
-        theme.textMuted.b + (theme.primary.b - theme.textMuted.b) * intensity,
-        theme.textMuted.a,
-      )
-    }
-    return theme.textMuted
-  }
-
-  return (
-    <box paddingLeft={2} marginTop={1}>
-      <text>
-        <span style={{ fg: theme.primary }}>●</span>{" "}
-        {streamingText()
-          .split("")
-          .map((char, i) => (
-            <span style={{ fg: getCharColor(i) }}>{char}</span>
-          ))}{" "}
-        <span style={{ fg: theme.textMuted }}>
-          (press {props.interruptCount > 0 ? "ESC again" : "ESC x2"} to interrupt)
-        </span>
-      </text>
-    </box>
-  )
-}
-
 function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; last: boolean }) {
   const local = useLocal()
   const { theme } = useTheme()
   const sync = useSync()
-  const ctx = use()
   const messages = createMemo(() => sync.data.message[props.message.sessionID] ?? [])
-  const status = createMemo(() => sync.data.session_status[props.message.sessionID])
   const textOrder = createMemo(() => {
     const order = new Map<string, number>()
     let count = 0
@@ -1539,25 +1482,12 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
     return props.message.time.completed - user.time.created
   })
 
-  const isStreaming = createMemo(() => {
-    if (!props.last || props.message.time.completed) return false
-    if (status()?.type !== "busy") return false
-
-    const lastPart = props.parts[props.parts.length - 1]
-    if (!lastPart) return true
-
-    // Hide when actively showing text or reasoning
-    if (lastPart.type === "text" || lastPart.type === "reasoning") {
-      return false
-    }
-
-    // For tools, only show when pending (not yet started)
-    if (lastPart.type === "tool") {
-      const toolPart = lastPart as ToolPart
-      return toolPart.state?.status === "pending"
-    }
-
-    return true
+  const isLastOfTurn = createMemo(() => {
+    const msgs = messages()
+    const index = msgs.findIndex((x) => x.id === props.message.id)
+    if (index === -1) return false
+    const next = msgs[index + 1]
+    return !next || next.role === "user"
   })
 
   return (
@@ -1579,17 +1509,13 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
           )
         }}
       </For>
-      <Show when={duration() > 0}>
+      <Show when={isLastOfTurn() && duration() > 0 && props.parts.length > 0}>
         <box paddingLeft={2} marginTop={1}>
           <text fg={theme.textMuted}>{Locale.duration(duration())}</text>
         </box>
       </Show>
       <Show when={props.message.error}>
         <text fg={theme.error}>{props.message.error?.data.message}</text>
-      </Show>
-
-      <Show when={isStreaming()}>
-        <StreamingIndicator interruptCount={ctx.interruptCount()} />
       </Show>
     </>
   )

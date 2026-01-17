@@ -42,18 +42,15 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
 			}),
 		})
 
-		if (!response.ok) {
-			const text = await response.text().catch(() => "")
-			console.error("[arctic-anthropic-oauth] Token refresh failed:", response.status, text)
-			return { type: "failed" }
-		}
+	if (!response.ok) {
+		return { type: "failed" }
+	}
 
 		const json = (await response.json()) as TokenResponse
 
-		if (!json?.access_token) {
-			console.error("[arctic-anthropic-oauth] Token refresh response missing access_token:", json)
-			return { type: "failed" }
-		}
+	if (!json?.access_token) {
+		return { type: "failed" }
+	}
 
 		// Calculate expiry time (default to 1 hour if not provided)
 		const expiresIn = json.expires_in ?? 3600
@@ -66,7 +63,6 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
 			expires,
 		}
 	} catch (error) {
-		console.error("[arctic-anthropic-oauth] Token refresh error:", error)
 		return { type: "failed" }
 	}
 }

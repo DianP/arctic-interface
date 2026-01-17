@@ -151,15 +151,12 @@ export const ArcticAnthropicAuth: Plugin = async (input: PluginInput) => {
                   })
 
                   if (!tokenResponse.ok) {
-                    const errorText = await tokenResponse.text()
-                    console.error("[Anthropic OAuth] Token exchange failed:", tokenResponse.status, errorText)
                     return { type: "failed" as const, error: `Token exchange failed: ${tokenResponse.status}` }
                   }
 
                   const tokenData = await tokenResponse.json()
 
                   if (!tokenData.access_token) {
-                    console.error("[Anthropic OAuth] No access token in response:", tokenData)
                     return { type: "failed" as const, error: "No access token received" }
                   }
 
@@ -173,7 +170,6 @@ export const ArcticAnthropicAuth: Plugin = async (input: PluginInput) => {
                     expires: expiresAt,
                   }
                 } catch (error) {
-                  console.error("[Anthropic OAuth] Error during token exchange:", error)
                   return {
                     type: "failed" as const,
                     error: error instanceof Error ? error.message : "Unknown error",

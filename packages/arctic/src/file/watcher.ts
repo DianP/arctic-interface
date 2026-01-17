@@ -27,8 +27,9 @@ export namespace FileWatcher {
   }
 
   const watcher = lazy(() => {
+    const libc = typeof ARCTIC_LIBC !== "undefined" ? ARCTIC_LIBC : "glibc"
     const binding = require(
-      `@parcel/watcher-${process.platform}-${process.arch}${process.platform === "linux" ? `-${ARCTIC_LIBC || "glibc"}` : ""}`,
+      `@parcel/watcher-${process.platform}-${process.arch}${process.platform === "linux" ? `-${libc}` : ""}`,
     )
     return createWrapper(binding) as typeof import("@parcel/watcher")
   })

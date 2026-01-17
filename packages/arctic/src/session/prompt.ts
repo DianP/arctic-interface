@@ -13,6 +13,7 @@ import path from "path"
 import z from "zod"
 import { Session } from "."
 import { Agent } from "../agent/agent"
+import { Auth } from "../auth"
 import { Bus } from "../bus"
 import { Flag } from "../flag/flag"
 import { Identifier } from "../id/id"
@@ -20,7 +21,6 @@ import { Plugin } from "../plugin"
 import { Instance } from "../project/instance"
 import { Provider } from "../provider/provider"
 import { ProviderTransform } from "../provider/transform"
-import { Auth } from "../auth"
 import { Log } from "../util/log"
 import { BenchmarkSchema } from "./benchmark-schema"
 import { SessionCompaction } from "./compaction"
@@ -364,14 +364,16 @@ export namespace SessionPrompt {
     log.info("cancel", { sessionID })
     const s = state()
     const match = s[sessionID]
-    if (!match) return
-    match.abort.abort()
-    for (const item of match.callbacks) {
-      item.reject()
+    if (match) {
+      match.abort.abort()
+      for (const item of match.callbacks) {
+        item.reject()
+      }
+      delete s[sessionID]
     }
-    delete s[sessionID]
+    // always set status to idle, even if no match in state
+    // this ensures status is properly reset if state got out of sync
     SessionStatus.set(sessionID, { type: "idle" })
-    return
   }
 
   export const loop = fn(Identifier.schema("session"), async (sessionID) => {
@@ -387,9 +389,11 @@ export namespace SessionPrompt {
 
     let step = 0
     while (true) {
-      SessionStatus.set(sessionID, { type: "busy" })
       log.info("loop", { step, sessionID })
-      if (abort.aborted) break
+      if (abort.aborted) {
+        SessionStatus.set(sessionID, { type: "idle" })
+        break
+      }
       let msgs = await MessageV2.filterCompacted(MessageV2.stream(sessionID))
 
       let lastUser: MessageV2.User | undefined
@@ -412,7 +416,10 @@ export namespace SessionPrompt {
 
       for (const [userID, assistant] of userToLastAssistant) {
         if (!incompleteUserMessageIDs.has(userID)) continue
-        const isComplete = assistant.finish && !["tool-calls", "unknown"].includes(assistant.finish)
+        // a message is incomplete ONLY if finish is "tool-calls" (meaning tools need to run)
+        // all other states (stop, length, undefined, unknown, etc.) are considered complete
+        // this prevents the loop from retrying old interrupted/cancelled messages
+        const isComplete = assistant.finish !== "tool-calls"
         if (isComplete) {
           incompleteUserMessageIDs.delete(userID)
         }
@@ -437,9 +444,11 @@ export namespace SessionPrompt {
 
       if (!lastUser) {
         log.info("all user messages have complete responses, exiting loop", { sessionID })
+        SessionStatus.set(sessionID, { type: "idle" })
         break
       }
 
+      SessionStatus.set(sessionID, { type: "busy" })
       step++
       if (step === 1)
         ensureTitle({
@@ -835,6 +844,7 @@ export namespace SessionPrompt {
       continue
     }
     SessionCompaction.prune({ sessionID })
+    SessionStatus.set(sessionID, { type: "idle" })
     for await (const item of MessageV2.stream(sessionID)) {
       if (item.info.role === "user") continue
       const queued = state()[sessionID]?.callbacks ?? []

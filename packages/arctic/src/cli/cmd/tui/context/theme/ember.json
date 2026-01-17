@@ -1,0 +1,221 @@
+{
+  "$schema": "https://usearctic.sh/theme.json",
+  "defs": {
+    "emberRed": "#ff4d4d",
+    "fireOrange": "#ff9a3c",
+    "blazeYellow": "#ffcc4d",
+    "ashGray": "#2a2a2a",
+    "charcoal": "#1a1a1a",
+    "smokeWhite": "#f0f0f0",
+    "coalBlack": "#0f0f0f",
+    "sparkGold": "#ffd700",
+    "text": "#f5f5f5",
+    "textMuted": "#999999"
+  },
+  "theme": {
+    "primary": {
+      "dark": "emberRed",
+      "light": "#cc3d3d"
+    },
+    "secondary": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "accent": {
+      "dark": "blazeYellow",
+      "light": "#cca33d"
+    },
+    "error": {
+      "dark": "emberRed",
+      "light": "#cc3d3d"
+    },
+    "warning": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "success": {
+      "dark": "#4caf50",
+      "light": "#3d8c40"
+    },
+    "info": {
+      "dark": "blazeYellow",
+      "light": "#cca33d"
+    },
+    "text": {
+      "dark": "text",
+      "light": "#1a1a1a"
+    },
+    "textMuted": {
+      "dark": "textMuted",
+      "light": "#666666"
+    },
+    "background": {
+      "dark": "none",
+      "light": "none"
+    },
+    "backgroundPanel": {
+      "dark": "#1a1a1a",
+      "light": "#f5f5f5"
+    },
+    "backgroundElement": {
+      "dark": "rgba(100, 100, 100, 0.15)",
+      "light": "rgba(220, 220, 220, 0.15)"
+    },
+    "backgroundMenu": {
+      "dark": "#2a2a2a",
+      "light": "#e8e8e8"
+    },
+    "border": {
+      "dark": "emberRed",
+      "light": "#cc3d3d"
+    },
+    "borderActive": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "borderSubtle": {
+      "dark": "ashGray",
+      "light": "#cccccc"
+    },
+    "diffAdded": {
+      "dark": "#4caf50",
+      "light": "#3d8c40"
+    },
+    "diffRemoved": {
+      "dark": "emberRed",
+      "light": "#cc3d3d"
+    },
+    "diffContext": {
+      "dark": "textMuted",
+      "light": "#666666"
+    },
+    "diffHunkHeader": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "diffHighlightAdded": {
+      "dark": "#66cc66",
+      "light": "#3d8c40"
+    },
+    "diffHighlightRemoved": {
+      "dark": "#ff6666",
+      "light": "#cc3d3d"
+    },
+    "diffAddedBg": {
+      "dark": "rgba(76, 175, 80, 0.15)",
+      "light": "rgba(61, 140, 64, 0.2)"
+    },
+    "diffRemovedBg": {
+      "dark": "rgba(255, 77, 77, 0.15)",
+      "light": "rgba(204, 61, 61, 0.2)"
+    },
+    "diffContextBg": {
+      "dark": "none",
+      "light": "none"
+    },
+    "diffLineNumber": {
+      "dark": "textMuted",
+      "light": "#666666"
+    },
+    "diffAddedLineNumberBg": {
+      "dark": "rgba(76, 175, 80, 0.2)",
+      "light": "rgba(61, 140, 64, 0.25)"
+    },
+    "diffRemovedLineNumberBg": {
+      "dark": "rgba(255, 77, 77, 0.2)",
+      "light": "rgba(204, 61, 61, 0.25)"
+    },
+    "markdownText": {
+      "dark": "text",
+      "light": "#1a1a1a"
+    },
+    "markdownHeading": {
+      "dark": "emberRed",
+      "light": "#cc3d3d"
+    },
+    "markdownLink": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "markdownLinkText": {
+      "dark": "blazeYellow",
+      "light": "#cca33d"
+    },
+    "markdownCode": {
+      "dark": "#4caf50",
+      "light": "#3d8c40"
+    },
+    "markdownBlockQuote": {
+      "dark": "textMuted",
+      "light": "#666666"
+    },
+    "markdownEmph": {
+      "dark": "emberRed",
+      "light": "#cc3d3d"
+    },
+    "markdownStrong": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "markdownHorizontalRule": {
+      "dark": "ashGray",
+      "light": "#cccccc"
+    },
+    "markdownListItem": {
+      "dark": "emberRed",
+      "light": "#cc3d3d"
+    },
+    "markdownListEnumeration": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "markdownImage": {
+      "dark": "blazeYellow",
+      "light": "#cca33d"
+    },
+    "markdownImageText": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "markdownCodeBlock": {
+      "dark": "text",
+      "light": "#1a1a1a"
+    },
+    "syntaxComment": {
+      "dark": "textMuted",
+      "light": "#666666"
+    },
+    "syntaxKeyword": {
+      "dark": "emberRed",
+      "light": "#cc3d3d"
+    },
+    "syntaxFunction": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "syntaxVariable": {
+      "dark": "blazeYellow",
+      "light": "#cca33d"
+    },
+    "syntaxString": {
+      "dark": "#4caf50",
+      "light": "#3d8c40"
+    },
+    "syntaxNumber": {
+      "dark": "sparkGold",
+      "light": "#ccaa00"
+    },
+    "syntaxType": {
+      "dark": "fireOrange",
+      "light": "#cc7b30"
+    },
+    "syntaxOperator": {
+      "dark": "textMuted",
+      "light": "#666666"
+    },
+    "syntaxPunctuation": {
+      "dark": "text",
+      "light": "#1a1a1a"
+    }
+  }
+}

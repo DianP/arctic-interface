@@ -250,6 +250,11 @@ export function SessionTurn(
               })
 
               createEffect(() => {
+                const completed = lastAssistantMessage()?.time.completed
+                if (completed) {
+                  setStore("duration", duration())
+                  return
+                }
                 const timer = setInterval(() => {
                   setStore("duration", duration())
                 }, 1000)

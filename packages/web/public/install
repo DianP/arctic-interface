@@ -180,7 +180,7 @@ print_message() {
 check_version() {
     if command -v arctic >/dev/null 2>&1; then
         arctic_path=$(which arctic)
-        installed_version=$(arctic --version 2>/dev/null | head -n1 | tr -d '[:space:]')
+        installed_version=$(arctic --version 2>/dev/null | head -n1 | tr -d '[:space:]' || true)
         installed_version=${installed_version#v}
 
         if [[ "$installed_version" == "$specific_version" ]]; then

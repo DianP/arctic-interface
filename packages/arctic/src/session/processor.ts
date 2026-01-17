@@ -264,6 +264,9 @@ export namespace SessionProcessor {
                   input.assistantMessage.finish = value.finishReason
                   input.assistantMessage.cost += usage.cost
                   input.assistantMessage.tokens = usage.tokens
+                  if (!input.assistantMessage.time.completed) {
+                    input.assistantMessage.time.completed = Date.now()
+                  }
                   await Session.updatePart({
                     id: Identifier.ascending("part"),
                     reason: value.finishReason,
@@ -361,7 +364,7 @@ export namespace SessionProcessor {
             })
             const error = MessageV2.fromError(e, { providerID: input.model.providerID })
             const retry = SessionRetry.retryable(error)
-            if (retry !== undefined) {
+            if (retry !== undefined && attempt < (streamInput.maxRetries ?? 0)) {
               attempt++
               const delay = SessionRetry.delay(attempt, error.name === "APIError" ? error : undefined)
               SessionStatus.set(input.sessionID, {
@@ -370,7 +373,9 @@ export namespace SessionProcessor {
                 message: retry,
                 next: Date.now() + delay,
               })
-              await SessionRetry.sleep(delay, input.abort).catch(() => {})
+              await SessionRetry.sleep(delay, input.abort).catch((e) => {
+                if (input.abort.aborted) throw e
+              })
               continue
             }
             input.assistantMessage.error = error
@@ -398,6 +403,7 @@ export namespace SessionProcessor {
           }
           input.assistantMessage.time.completed = Date.now()
           await Session.updateMessage(input.assistantMessage)
+          SessionStatus.set(input.sessionID, { type: "idle" })
           if (blocked) return "stop"
           if (input.assistantMessage.error) return "stop"
           return "continue"

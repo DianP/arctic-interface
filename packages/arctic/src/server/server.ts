@@ -1691,6 +1691,24 @@ export namespace Server {
             }
           }
 
+          if (!disabled.has("codex") && (!enabled || enabled.has("codex"))) {
+            filteredProviders["codex"] = {
+              id: "codex",
+              name: "Codex",
+              env: [],
+              models: {},
+            }
+          }
+
+          if (!disabled.has("antigravity") && (!enabled || enabled.has("antigravity"))) {
+            filteredProviders["antigravity"] = {
+              id: "antigravity",
+              name: "Antigravity",
+              env: [],
+              models: {},
+            }
+          }
+
           if (!disabled.has("minimax") && (!enabled || enabled.has("minimax"))) {
             filteredProviders["minimax"] = {
               id: "minimax",

@@ -1,4 +1,4 @@
-import { Renderable, RGBA } from "@opentui/core"
+import { Renderable } from "@opentui/core"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/context/theme"
 import { batch, createContext, Show, useContext, type JSX, type ParentProps } from "solid-js"
@@ -27,7 +27,6 @@ export function Dialog(
       paddingTop={2}
       left={0}
       top={0}
-      backgroundColor={RGBA.fromInts(0, 0, 0, 150)}
     >
       <box
         onMouseUp={async (e) => {

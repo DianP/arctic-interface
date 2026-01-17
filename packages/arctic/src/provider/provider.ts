@@ -1563,7 +1563,7 @@ export namespace Provider {
             },
             headers: {},
           },
-          "gpt-5.1": {
+          "gpt-5.2": {
             id: "gpt-5.2",
             providerID: "codex",
             name: "gpt-5.2",

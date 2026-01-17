@@ -1,9 +1,13 @@
-# Arctic
+<p align="center">
+  <img src="https://www.usearctic.sh/arctic-logo.png" alt="Arctic logo">
+</p>
+<p align="center">The open source AI coding agent with usage tracking.</p>
+<p align="center">
+<a href="https://discord.gg/B4HqXxNynG"><img alt="Discord" src="https://img.shields.io/badge/discord-join-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
+<a href="https://github.com/arctic-cli/interface"><img alt="GitHub" src="https://img.shields.io/github/stars/arctic-cli/interface?style=flat-square" /></a>
+</p>
 
-**One interface for every AI coding plan.**  
-See your limits. Switch providers instantly. Stay in control.
-
-![Arctic Demo](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGFkazZsa2I2YnM4c3R0Z3duMjQ4cTQzMTZxc2hkZ2xxdDAzMnh2YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5iJOom0R1fgX7xKuCU/giphy.gif)
+[![Arctic Terminal UI](https://www.usearctic.sh/session_interface.png)](https://usearctic.sh)
 
 ## What is Arctic?
 
@@ -55,25 +59,25 @@ Arctic supports every major AI coding plan and API:
 
 Anthropic:
 
-![Anthropic Usage](https://www.usearctic.sh/_next/image?url=%2Fcc_usage.png&w=828&q=75)
+![Anthropic Usage](https://www.usearctic.sh/cc_usage.png)
 
 Codex:
 
-![Codex Usage](https://www.usearctic.sh/_next/image?url=%2Fcodex_usage.png&w=828&q=75)
+![Codex Usage](https://www.usearctic.sh/codex_usage.png)
 
 Antigravity:
 
-![Antigravity Usage](https://www.usearctic.sh/_next/image?url=%2Fantigravity_usage.png&w=828&q=75)
+![Antigravity Usage](https://www.usearctic.sh/antigravity_usage.png)
 
 GitHub Copilot:
 
-![GitHub Copilot Usage](https://www.usearctic.sh/_next/image?url=%2Fcopilot_usage.png&w=828&q=75)
+![GitHub Copilot Usage](https://www.usearctic.sh/copilot_usage.png)
 
 Z.AI:
 
-![Z.AI Usage](https://www.usearctic.sh/_next/image?url=%2Fzai_usage.png&w=828&q=75)
+![Z.AI Usage](https://www.usearctic.sh/zai_usage.png)
 
-Note: Some providers (like Qwen Code and Kimi for Coding) are not shown here, but their usage views are available in the TUI.
+Note: Some providers (like Qwen Code, Kimi for Coding or MiniMax) are not shown here, but their usage views are available in the TUI.
 
 ## Development
 
@@ -89,8 +93,6 @@ Arctic is open source and we'd love your input. Whether you have ideas, want to 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 **If Arctic saved you time or stress, a short message or issue saying how you use it helps a lot.**
-
-&ensp;
 
 ## FAQ
 

@@ -1,22 +1,22 @@
-import { Log } from "../util/log"
-import path from "path"
-import { pathToFileURL } from "url"
-import os from "os"
-import z from "zod"
-import { Filesystem } from "../util/filesystem"
-import { ModelsDev } from "../provider/models"
-import { mergeDeep, pipe } from "remeda"
-import { Global } from "../global"
-import fs from "fs/promises"
-import { lazy } from "../util/lazy"
-import { NamedError } from "@arctic-cli/util/error"
-import { Flag } from "../flag/flag"
-import { Auth } from "../auth"
-import { type ParseError as JsoncParseError, parse as parseJsonc, printParseErrorCode } from "jsonc-parser"
-import { Instance } from "../project/instance"
-import { LSPServer } from "../lsp/server"
 import { BunProc } from "@/bun"
 import { Installation } from "@/installation"
+import { NamedError } from "@arctic-cli/util/error"
+import fs from "fs/promises"
+import { type ParseError as JsoncParseError, parse as parseJsonc, printParseErrorCode } from "jsonc-parser"
+import os from "os"
+import path from "path"
+import { mergeDeep, pipe } from "remeda"
+import { pathToFileURL } from "url"
+import z from "zod"
+import { Auth } from "../auth"
+import { Flag } from "../flag/flag"
+import { Global } from "../global"
+import { LSPServer } from "../lsp/server"
+import { Instance } from "../project/instance"
+import { ModelsDev } from "../provider/models"
+import { Filesystem } from "../util/filesystem"
+import { lazy } from "../util/lazy"
+import { Log } from "../util/log"
 import { ConfigMarkdown } from "./markdown"
 
 export namespace Config {
@@ -71,7 +71,7 @@ export namespace Config {
       Global.Path.config,
       ...(await Array.fromAsync(
         Filesystem.up({
-          targets: [".arctic"],
+          targets: [".arctic", ".opencode"],
           start: Instance.directory,
           stop: Instance.worktree,
         }),
@@ -87,7 +87,7 @@ export namespace Config {
     for (const dir of directories) {
       await assertValid(dir)
 
-      if (dir.endsWith(".arctic") || dir === Flag.ARCTIC_CONFIG_DIR) {
+      if (dir.endsWith(".arctic") || dir.endsWith(".opencode") || dir === Flag.ARCTIC_CONFIG_DIR) {
         for (const file of ["arctic.jsonc", "arctic.json"]) {
           log.debug(`loading config from ${path.join(dir, file)}`)
           result = mergeConfigWithPlugins(result, await loadFile(path.join(dir, file)))
@@ -195,7 +195,7 @@ export namespace Config {
       if (!md.data) continue
 
       const name = (() => {
-        const patterns = ["/.arctic/command/", "/command/"]
+        const patterns = ["/.arctic/command/", "/.opencode/command/", "/command/"]
         const pattern = patterns.find((p) => item.includes(p))
 
         if (pattern) {
@@ -237,9 +237,11 @@ export namespace Config {
       let agentName = path.basename(item, ".md")
       const agentFolderPath = item.includes("/.arctic/agent/")
         ? item.split("/.arctic/agent/")[1]
-        : item.includes("/agent/")
-          ? item.split("/agent/")[1]
-          : agentName + ".md"
+        : item.includes("/.opencode/agent/")
+          ? item.split("/.opencode/agent/")[1]
+          : item.includes("/agent/")
+            ? item.split("/agent/")[1]
+            : agentName + ".md"
 
       // If agent is in a subfolder, include folder path in name
       if (agentFolderPath.includes("/")) {

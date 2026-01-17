@@ -9,9 +9,12 @@ import catppuccin from "./theme/catppuccin.json" with { type: "json" }
 import catppuccinMacchiato from "./theme/catppuccin-macchiato.json" with { type: "json" }
 import claude from "./theme/claude.json" with { type: "json" }
 import cobalt2 from "./theme/cobalt2.json" with { type: "json" }
+import cyberpunk from "./theme/cyberpunk.json" with { type: "json" }
 import dracula from "./theme/dracula.json" with { type: "json" }
+import ember from "./theme/ember.json" with { type: "json" }
 import everforest from "./theme/everforest.json" with { type: "json" }
 import flexoki from "./theme/flexoki.json" with { type: "json" }
+import forest from "./theme/forest.json" with { type: "json" }
 import github from "./theme/github.json" with { type: "json" }
 import gruvbox from "./theme/gruvbox.json" with { type: "json" }
 import kanagawa from "./theme/kanagawa.json" with { type: "json" }
@@ -21,14 +24,18 @@ import mercury from "./theme/mercury.json" with { type: "json" }
 import monokai from "./theme/monokai.json" with { type: "json" }
 import nightowl from "./theme/nightowl.json" with { type: "json" }
 import nord from "./theme/nord.json" with { type: "json" }
+import ocean from "./theme/ocean.json" with { type: "json" }
 import onedark from "./theme/one-dark.json" with { type: "json" }
 import arctic from "./theme/arctic.json" with { type: "json" }
 import orng from "./theme/orng.json" with { type: "json" }
 import palenight from "./theme/palenight.json" with { type: "json" }
+import pastel from "./theme/pastel.json" with { type: "json" }
 import rosepine from "./theme/rosepine.json" with { type: "json" }
 import solarized from "./theme/solarized.json" with { type: "json" }
+import sunset from "./theme/sunset.json" with { type: "json" }
 import synthwave84 from "./theme/synthwave84.json" with { type: "json" }
 import tokyonight from "./theme/tokyonight.json" with { type: "json" }
+import transparent from "./theme/transparent.json" with { type: "json" }
 import vercel from "./theme/vercel.json" with { type: "json" }
 import vesper from "./theme/vesper.json" with { type: "json" }
 import zenburn from "./theme/zenburn.json" with { type: "json" }
@@ -139,9 +146,12 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   ["catppuccin-macchiato"]: catppuccinMacchiato,
   claude,
   cobalt2,
+  cyberpunk,
   dracula,
+  ember,
   everforest,
   flexoki,
+  forest,
   github,
   gruvbox,
   kanagawa,
@@ -151,14 +161,18 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   monokai,
   nightowl,
   nord,
+  ocean,
   ["one-dark"]: onedark,
   arctic,
   orng,
   palenight,
+  pastel,
   rosepine,
   solarized,
+  sunset,
   synthwave84,
   tokyonight,
+  transparent,
   vesper,
   vercel,
   zenburn,
@@ -172,6 +186,18 @@ function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
       if (c === "transparent" || c === "none") return RGBA.fromInts(0, 0, 0, 0)
 
       if (c.startsWith("#")) return RGBA.fromHex(c)
+
+      if (c.startsWith("rgba(")) {
+        const match = c.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/)
+        if (match) {
+          return RGBA.fromInts(
+            Number.parseInt(match[1]),
+            Number.parseInt(match[2]),
+            Number.parseInt(match[3]),
+            Math.round(Number.parseFloat(match[4]) * 255),
+          )
+        }
+      }
 
       if (defs[c] != null) {
         return resolveColor(defs[c])
@@ -275,8 +301,17 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     const [store, setStore] = createStore({
       themes: DEFAULT_THEMES,
       mode: kv.get("theme_mode", props.mode),
-      active: (sync.data.config.theme ?? kv.get("theme", "arctic")) as string,
+      active: (kv.get("theme") ?? sync.data.config.theme ?? "arctic") as string,
       ready: false,
+    })
+
+    createEffect(() => {
+      if (kv.ready) {
+        const savedTheme = kv.get("theme")
+        if (savedTheme && savedTheme !== store.active) {
+          setStore("active", savedTheme)
+        }
+      }
     })
 
     createEffect(async () => {

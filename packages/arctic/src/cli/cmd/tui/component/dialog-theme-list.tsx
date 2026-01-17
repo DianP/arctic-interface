@@ -3,6 +3,17 @@ import { useTheme } from "../context/theme"
 import { useDialog } from "../ui/dialog"
 import { onCleanup, onMount } from "solid-js"
 
+const TRANSPARENT_THEMES = [
+  "arctic",
+  "cyberpunk",
+  "ember",
+  "forest",
+  "ocean",
+  "pastel",
+  "sunset",
+  "transparent",
+]
+
 export function DialogThemeList() {
   const theme = useTheme()
   const options = Object.keys(theme.all())
@@ -10,6 +21,7 @@ export function DialogThemeList() {
     .map((value) => ({
       title: value,
       value: value,
+      description: TRANSPARENT_THEMES.includes(value) ? "[transparent]" : undefined,
     }))
   const dialog = useDialog()
   let confirmed = false

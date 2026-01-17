@@ -178,21 +178,23 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         case "session.status": {
           const sessionID = event.properties.sessionID
           const status = event.properties.status
+          
           setStore("session_status", sessionID, status)
 
-          // Track work time
+          // track work time
           const currentTime = store.session_work_time[sessionID]
 
           if (status.type === "busy") {
-            // Start timer
+            // start timer
             if (!currentTime?.currentStart) {
               setStore("session_work_time", sessionID, {
                 currentStart: Date.now(),
                 totalMs: currentTime?.totalMs ?? 0,
               })
             }
-          } else if (status.type === "idle") {
-            // Stop timer and accumulate
+          }
+          if (status.type === "idle") {
+            // stop timer and accumulate
             if (currentTime?.currentStart) {
               const elapsed = Date.now() - currentTime.currentStart
               setStore("session_work_time", sessionID, {
@@ -281,6 +283,54 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
         case "vcs.branch.updated": {
           setStore("vcs", { branch: event.properties.branch })
+          break
+        }
+
+        case "server.connected": {
+          // refetch session status on reconnect to ensure TUI state is in sync
+          // this handles cases where the connection dropped and we missed status events
+          sdk.client.session.status().then((x) => {
+            if (!x.data) return
+            // compare with current state and only update what's different
+            const serverStatuses = x.data
+            const currentStatuses = store.session_status
+
+            // for sessions that server says are busy/retry but we think are idle (or missing),
+            // we need to update our state
+            for (const [sessionID, status] of Object.entries(serverStatuses)) {
+              const current = currentStatuses[sessionID]
+              if (!current || current.type !== status.type) {
+                setStore("session_status", sessionID, status)
+                // also update work time if status changed to busy
+                if (status.type === "busy") {
+                  const currentTime = store.session_work_time[sessionID]
+                  if (!currentTime?.currentStart) {
+                    setStore("session_work_time", sessionID, {
+                      currentStart: Date.now(),
+                      totalMs: currentTime?.totalMs ?? 0,
+                    })
+                  }
+                }
+              }
+            }
+
+            // for sessions we think are busy but server says are idle (not in list),
+            // set them to idle
+            for (const sessionID of Object.keys(currentStatuses)) {
+              if (currentStatuses[sessionID].type !== "idle" && !serverStatuses[sessionID]) {
+                setStore("session_status", sessionID, { type: "idle" })
+                // clear work time timer
+                const currentTime = store.session_work_time[sessionID]
+                if (currentTime?.currentStart) {
+                  const elapsed = Date.now() - currentTime.currentStart
+                  setStore("session_work_time", sessionID, {
+                    currentStart: undefined,
+                    totalMs: currentTime.totalMs + elapsed,
+                  })
+                }
+              }
+            }
+          })
           break
         }
       }
