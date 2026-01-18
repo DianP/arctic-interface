@@ -59,7 +59,7 @@ export function createShimmerColors(_text: string, options: ShimmerTextOptions):
 
   return (frameIndex: number, charIndex: number, _totalFrames: number, totalChars: number) => {
     if (charIndex < BULLET.length) {
-      return baseRgba
+      return highlightRgba
     }
 
     const adjustedCharIndex = charIndex - BULLET.length

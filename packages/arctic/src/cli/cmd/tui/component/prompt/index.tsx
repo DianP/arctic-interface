@@ -849,6 +849,7 @@ export function Prompt(props: PromptProps) {
     const localSlashHandlers: Record<string, () => void> = {
       "/status": () => command.trigger("arctic.status", "prompt"),
       "/usage": () => command.trigger("arctic.usage", "prompt"),
+      "/stats": () => command.trigger("arctic.stats", "prompt"),
     }
 
     let handledLocally = false
@@ -1653,8 +1654,8 @@ export function Prompt(props: PromptProps) {
         <Show when={status().type !== "idle"}>
           <box flexDirection="row" justifyContent="space-between" gap={1}>
             <box flexShrink={0} flexDirection="row" gap={1}>
-              {/* @ts-ignore // SpinnerOptions doesn't support marginLeft */}
-              <spinner marginLeft={1} color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
+              <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
+              <text fg={theme.textMuted}>Working...</text>
               <box flexDirection="row" gap={1} flexShrink={0}>
                 {(() => {
                   const retry = createMemo(() => {

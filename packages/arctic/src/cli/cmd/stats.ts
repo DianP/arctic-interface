@@ -4,32 +4,57 @@ import { Session } from "../../session"
 import { bootstrap } from "../bootstrap"
 import { Storage } from "../../storage/storage"
 import { Project } from "../../project/project"
-import { Instance } from "../../project/instance"
 import { Pricing } from "../../provider/pricing"
 
 interface SessionStats {
   totalSessions: number
-  totalMessages: number
+  totalTokens: number
   totalCost: number
-  totalTokens: {
+  activeDays: number
+  longestStreak: number
+  currentStreak: number
+  longestSession: number
+  peakHour: number
+  modelUsage: Record<string, { count: number; tokens: number; cost: number }>
+  dailyActivity: Record<string, number>
+  dailyCost: Record<string, number>
+  hourlyActivity: Record<number, number>
+  tokenBreakdown: {
     input: number
     output: number
-    reasoning: number
-    cache: {
-      read: number
-      write: number
-    }
+    cacheRead: number
+    cacheWrite: number
   }
-  toolUsage: Record<string, number>
-  modelUsage: Record<string, { count: number; cost: number; tokens: number; providerID?: string; modelID?: string }>
-  dateRange: {
-    earliest: number
-    latest: number
+  costBreakdown: {
+    input: number
+    output: number
+    cacheRead: number
+    cacheWrite: number
   }
-  days: number
   costPerDay: number
-  tokensPerSession: number
-  medianTokensPerSession: number
+  costPerSession: number
+}
+
+const WAR_AND_PEACE_TOKENS = 730000
+
+// ansi color codes
+const colors = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  primary: "\x1b[38;5;75m", // blue
+  yellow: "\x1b[38;5;220m",
+  pink: "\x1b[38;5;213m",
+  purple: "\x1b[38;5;141m",
+  green: "\x1b[38;5;120m",
+  muted: "\x1b[38;5;245m",
+  white: "\x1b[38;5;255m",
+  // heatmap colors
+  heat0: "\x1b[38;5;236m",
+  heat1: "\x1b[38;5;22m",
+  heat2: "\x1b[38;5;28m",
+  heat3: "\x1b[38;5;34m",
+  heat4: "\x1b[38;5;82m",
 }
 
 export const StatsCommand = cmd({
@@ -37,92 +62,505 @@ export const StatsCommand = cmd({
   describe: "show token usage and cost statistics",
   builder: (yargs: Argv) => {
     return yargs
-      .option("days", {
-        describe: "show stats for the last N days, or today/yesterday (default: all time)",
-        type: "string",
+      .option("view", {
+        describe: "which view to display",
+        choices: ["all", "overview", "models", "cost"] as const,
+        default: "all" as "all" | "overview" | "models" | "cost",
       })
-      .option("tools", {
-        describe: "number of tools to show (default: all)",
-        type: "number",
-      })
-      .option("project", {
-        describe: "filter by project (default: all projects, empty string: current project)",
-        type: "string",
-      })
-      .option("provider", {
-        describe: "filter by provider ID",
-        type: "string",
-      })
-      .option("model", {
-        describe: "filter by model ID (partial match)",
-        type: "string",
+      .option("json", {
+        alias: "j",
+        describe: "output as JSON",
+        type: "boolean",
+        default: false,
       })
   },
   handler: async (args) => {
     await bootstrap(process.cwd(), async () => {
-      const range = resolveDaysRange(args.days)
-      const stats = await aggregateSessionStats(range, args.project, args.provider, args.model as string | undefined)
-      displayStats(stats, args.tools, args.provider, args.model as string | undefined)
+      const stats = await aggregateStats()
+
+      if (args.json) {
+        console.log(JSON.stringify(stats, null, 2))
+        return
+      }
+
+      const view = args.view as "all" | "overview" | "models" | "cost"
+      displayStats(stats, view)
     })
   },
 })
 
-type DaysRange = { cutoffTime: number; fromTime?: number }
+function displayStats(stats: SessionStats, view: "all" | "overview" | "models" | "cost") {
+  const daysToShow = calculateDaysToShow(stats)
+  const favoriteModel = getFavoriteModel(stats)
+  const tokenComparison = getTokenComparison(stats)
 
-function resolveDaysRange(days?: string): DaysRange {
-  if (!days) {
-    return { cutoffTime: 0 }
+  console.log()
+
+  if (view === "all" || view === "overview") {
+    renderActivityHeatmap(stats.dailyActivity, daysToShow)
+    console.log()
+
+    // favorite model and total tokens row
+    const favModelText = `${colors.bold}Favorite model:${colors.reset} ${colors.primary}${favoriteModel ?? "N/A"}${colors.reset}`
+    const totalTokensText = `${colors.bold}Total tokens:${colors.reset} ${colors.primary}${formatNumber(stats.totalTokens)}${colors.reset}`
+    console.log(`${favModelText}    ${totalTokensText}`)
+    console.log()
+
+    // two column stats
+    const col1 = [
+      `${colors.bold}Sessions:${colors.reset} ${colors.primary}${stats.totalSessions}${colors.reset}`,
+      `${colors.bold}Current streak:${colors.reset} ${colors.primary}${stats.currentStreak} days${colors.reset}`,
+      `${colors.bold}Active days:${colors.reset} ${colors.primary}${stats.activeDays}/${daysToShow}${colors.reset}`,
+    ]
+    const col2 = [
+      `${colors.bold}Longest session:${colors.reset} ${colors.primary}${formatDuration(stats.longestSession)}${colors.reset}`,
+      `${colors.bold}Longest streak:${colors.reset} ${colors.primary}${stats.longestStreak} days${colors.reset}`,
+      `${colors.bold}Peak hour:${colors.reset} ${colors.primary}${formatHourRange(stats.peakHour)}${colors.reset}`,
+    ]
+
+    for (let i = 0; i < col1.length; i++) {
+      console.log(`${col1[i].padEnd(50)}${col2[i]}`)
+    }
+
+    if (tokenComparison) {
+      console.log()
+      console.log(`${colors.primary}You've used ~${tokenComparison}x more tokens than War and Peace${colors.reset}`)
+    }
+
+    console.log()
+    console.log(`${colors.muted}Stats from the last ${daysToShow} days${colors.reset}`)
+    console.log()
   }
 
-  const normalized = days.trim().toLowerCase()
-
-  if (normalized === "today") {
-    return { cutoffTime: startOfToday() }
+  if (view === "all" || view === "models") {
+    renderModelUsage(stats.modelUsage)
+    console.log()
   }
 
-  if (normalized === "yesterday") {
-    const fromTime = startOfYesterday()
-    return { cutoffTime: fromTime, fromTime: startOfToday() }
+  if (view === "all" || view === "cost") {
+    renderCostOverview(stats, daysToShow)
+    console.log()
   }
-
-  const asNumber = Number(normalized)
-  if (!Number.isFinite(asNumber) || asNumber < 0) {
-    throw new Error("--days must be 0, a positive number, 'today', or 'yesterday'")
-  }
-
-  if (asNumber === 0) {
-    return { cutoffTime: startOfToday() }
-  }
-
-  const DAYS_IN_MILLISECONDS = 24 * 60 * 60 * 1000
-  return { cutoffTime: Date.now() - asNumber * DAYS_IN_MILLISECONDS }
 }
 
-function startOfToday(): number {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-}
+function renderActivityHeatmap(dailyActivity: Record<string, number>, days: number) {
+  const termWidth = process.stdout.columns || 80
+  const availableWidth = Math.min(termWidth - 10, 80)
+  const weeksToShow = Math.min(Math.ceil(days / 7), Math.floor(availableWidth / 2))
+  const daysToShow = weeksToShow * 7
 
-function startOfYesterday(): number {
-  const todayStart = startOfToday()
-  return todayStart - 24 * 60 * 60 * 1000
-}
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
-function filterSessionsByRange(sessions: Session.Info[], range: DaysRange): Session.Info[] {
-  if (!range.cutoffTime) {
-    return sessions
+  const startDate = new Date(today)
+  startDate.setDate(startDate.getDate() - daysToShow + 1)
+
+  // adjust to start on Sunday
+  const dayOfWeek = startDate.getDay()
+  if (dayOfWeek !== 0) {
+    startDate.setDate(startDate.getDate() - dayOfWeek)
   }
 
-  const { cutoffTime, fromTime } = range
-  if (fromTime !== undefined) {
-    return sessions.filter((session) => session.time.updated >= cutoffTime && session.time.updated < fromTime)
+  const maxValue = Math.max(1, ...Object.values(dailyActivity))
+
+  // build weeks array
+  const weeks: { date: Date; value: number; level: number }[][] = []
+  let currentDate = new Date(startDate)
+  let currentWeek: { date: Date; value: number; level: number }[] = []
+
+  while (currentDate <= today) {
+    const dateKey = currentDate.toISOString().split("T")[0]
+    const value = dailyActivity[dateKey] || 0
+    const level = value === 0 ? 0 : Math.min(4, Math.ceil((value / maxValue) * 4))
+
+    if (currentDate.getDay() === 0 && currentWeek.length > 0) {
+      weeks.push(currentWeek)
+      currentWeek = []
+    }
+
+    currentWeek.push({ date: new Date(currentDate), value, level })
+    currentDate.setDate(currentDate.getDate() + 1)
   }
 
-  return sessions.filter((session) => session.time.updated >= cutoffTime)
+  if (currentWeek.length > 0) {
+    weeks.push(currentWeek)
+  }
+
+  // month labels
+  const monthLabels: { month: string; position: number }[] = []
+  let lastMonth = -1
+  for (let i = 0; i < weeks.length; i++) {
+    const week = weeks[i]
+    if (!week || week.length === 0) continue
+    const firstDay = week[0].date
+    const month = firstDay.getMonth()
+    if (month !== lastMonth) {
+      monthLabels.push({
+        month: firstDay.toLocaleString("en-US", { month: "short" }),
+        position: i,
+      })
+      lastMonth = month
+    }
+  }
+
+  // render month labels
+  let monthLine = "    "
+  for (let i = 0; i < monthLabels.length; i++) {
+    const label = monthLabels[i]
+    const nextLabel = monthLabels[i + 1]
+    const width = nextLabel ? (nextLabel.position - label.position) * 2 : (weeks.length - label.position) * 2
+    monthLine += colors.muted + label.month.padEnd(Math.max(width, 3)) + colors.reset
+  }
+  console.log(monthLine)
+
+  // render heatmap grid
+  const levelColors = [colors.heat0, colors.heat1, colors.heat2, colors.heat3, colors.heat4]
+
+  for (let dow = 0; dow < 7; dow++) {
+    let line = ""
+    if (dow === 1) line = colors.muted + "Mon " + colors.reset
+    else if (dow === 3) line = colors.muted + "Wed " + colors.reset
+    else if (dow === 5) line = colors.muted + "Fri " + colors.reset
+    else line = "    "
+
+    for (const week of weeks) {
+      const day = week.find((d) => d.date.getDay() === dow)
+      if (!day) {
+        line += colors.heat0 + "■ " + colors.reset
+      } else {
+        line += levelColors[day.level] + "■ " + colors.reset
+      }
+    }
+    console.log(line)
+  }
+
+  // legend
+  console.log()
+  let legend = "    " + colors.muted + "Less " + colors.reset
+  for (const c of levelColors) {
+    legend += c + "■ " + colors.reset
+  }
+  legend += colors.muted + "More" + colors.reset
+  console.log(legend)
 }
 
-async function getCurrentProject(): Promise<Project.Info> {
-  return Instance.project
+function renderModelUsage(modelUsage: Record<string, { count: number; tokens: number; cost: number }>) {
+  console.log(`${colors.bold}Model Usage${colors.reset}`)
+  console.log()
+
+  const sorted = Object.entries(modelUsage)
+    .sort(([, a], [, b]) => b.tokens - a.tokens)
+    .slice(0, 10)
+
+  if (sorted.length === 0) {
+    console.log(`${colors.muted}No model usage data available${colors.reset}`)
+    return
+  }
+
+  const maxTokens = Math.max(1, sorted[0][1].tokens)
+
+  for (const [model, usage] of sorted) {
+    const barLength = Math.max(1, Math.floor((usage.tokens / maxTokens) * 30))
+    const bar = "█".repeat(barLength)
+    const truncated = truncateModel(model, 38)
+    console.log(
+      `${colors.white}${truncated.padEnd(40)}${colors.reset}${colors.primary}${bar}${colors.reset} ${colors.muted}${usage.count}× · ${formatNumber(usage.tokens)} tokens · ${formatCurrency(usage.cost)}${colors.reset}`,
+    )
+  }
+}
+
+function renderCostOverview(stats: SessionStats, daysToShow: number) {
+  console.log(`${colors.bold}Cost Summary${colors.reset}`)
+  console.log()
+
+  // two column layout
+  const col1 = [
+    `${colors.bold}Total cost:${colors.reset} ${colors.yellow}${formatCurrency(stats.totalCost)}${colors.reset}`,
+    `${colors.bold}Avg cost/day:${colors.reset} ${colors.yellow}${formatCurrency(stats.costPerDay)}${colors.reset}`,
+    `${colors.bold}Avg cost/session:${colors.reset} ${colors.yellow}${formatCurrency(stats.costPerSession)}${colors.reset}`,
+  ]
+  const col2 = [
+    `${colors.bold}Sessions:${colors.reset} ${colors.primary}${stats.totalSessions}${colors.reset}`,
+    `${colors.bold}Active days:${colors.reset} ${colors.primary}${stats.activeDays}/${daysToShow}${colors.reset}`,
+    "",
+  ]
+
+  for (let i = 0; i < col1.length; i++) {
+    if (col2[i]) {
+      console.log(`${col1[i].padEnd(55)}${col2[i]}`)
+    } else {
+      console.log(col1[i])
+    }
+  }
+
+  console.log()
+  console.log(`${colors.bold}Token Breakdown${colors.reset}`)
+  console.log(
+    `  ${colors.bold}Input:${colors.reset} ${colors.primary}${formatNumber(stats.tokenBreakdown.input)}${colors.reset} · ${colors.yellow}${formatCurrency(stats.costBreakdown.input)}${colors.reset}`,
+  )
+  console.log(
+    `  ${colors.bold}Output:${colors.reset} ${colors.pink}${formatNumber(stats.tokenBreakdown.output)}${colors.reset} · ${colors.yellow}${formatCurrency(stats.costBreakdown.output)}${colors.reset}`,
+  )
+  console.log(
+    `  ${colors.bold}Cache read:${colors.reset} ${colors.purple}${formatNumber(stats.tokenBreakdown.cacheRead)}${colors.reset} · ${colors.yellow}${formatCurrency(stats.costBreakdown.cacheRead)}${colors.reset}`,
+  )
+  console.log(
+    `  ${colors.bold}Cache write:${colors.reset} ${colors.purple}${formatNumber(stats.tokenBreakdown.cacheWrite)}${colors.reset} · ${colors.yellow}${formatCurrency(stats.costBreakdown.cacheWrite)}${colors.reset}`,
+  )
+
+  console.log()
+  console.log(`${colors.bold}Top Models by Cost${colors.reset}`)
+
+  const topByCost = Object.entries(stats.modelUsage)
+    .sort(([, a], [, b]) => b.cost - a.cost)
+    .slice(0, 5)
+
+  if (topByCost.length === 0) {
+    console.log(`${colors.muted}No cost data available${colors.reset}`)
+    return
+  }
+
+  const maxCost = Math.max(0.01, topByCost[0][1].cost)
+
+  for (const [model, usage] of topByCost) {
+    const barLength = Math.max(1, Math.floor((usage.cost / maxCost) * 25))
+    const bar = "█".repeat(barLength)
+    const truncated = truncateModel(model, 33)
+    console.log(
+      `${colors.white}${truncated.padEnd(35)}${colors.reset}${colors.yellow}${bar}${colors.reset} ${colors.muted}${formatCurrency(usage.cost)} · ${formatNumber(usage.tokens)} tokens${colors.reset}`,
+    )
+  }
+
+  console.log()
+  console.log(`${colors.muted}Stats from the last ${daysToShow} days${colors.reset}`)
+}
+
+function calculateDaysToShow(stats: SessionStats): number {
+  const keys = Object.keys(stats.dailyActivity)
+  if (keys.length === 0) return 90
+  const earliest = Math.min(...keys.map((k) => new Date(k).getTime()))
+  const diff = Math.ceil((Date.now() - earliest) / (24 * 60 * 60 * 1000))
+  return Math.max(diff, 90)
+}
+
+function getFavoriteModel(stats: SessionStats): string | undefined {
+  if (Object.keys(stats.modelUsage).length === 0) return undefined
+  const sorted = Object.entries(stats.modelUsage).sort(([, a], [, b]) => b.tokens - a.tokens)
+  return sorted[0]?.[0]
+}
+
+function getTokenComparison(stats: SessionStats): number | undefined {
+  const multiple = stats.totalTokens / WAR_AND_PEACE_TOKENS
+  if (multiple < 1) return undefined
+  return Math.round(multiple)
+}
+
+async function aggregateStats(): Promise<SessionStats> {
+  const sessions = await getAllSessions()
+
+  const stats: SessionStats = {
+    totalSessions: sessions.length,
+    totalTokens: 0,
+    totalCost: 0,
+    activeDays: 0,
+    longestStreak: 0,
+    currentStreak: 0,
+    longestSession: 0,
+    peakHour: 12,
+    modelUsage: {},
+    dailyActivity: {},
+    dailyCost: {},
+    hourlyActivity: {},
+    tokenBreakdown: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    },
+    costBreakdown: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    },
+    costPerDay: 0,
+    costPerSession: 0,
+  }
+
+  if (sessions.length === 0) return stats
+
+  const activeDaysSet = new Set<string>()
+
+  for (const session of sessions) {
+    const duration = session.time.updated - session.time.created
+    if (duration > stats.longestSession) {
+      stats.longestSession = duration
+    }
+
+    const dateKey = new Date(session.time.created).toISOString().split("T")[0]
+    activeDaysSet.add(dateKey)
+
+    const hour = new Date(session.time.created).getHours()
+    stats.hourlyActivity[hour] = (stats.hourlyActivity[hour] || 0) + 1
+  }
+
+  // process messages in batches
+  const BATCH_SIZE = 20
+  for (let i = 0; i < sessions.length; i += BATCH_SIZE) {
+    const batch = sessions.slice(i, i + BATCH_SIZE)
+    const batchResults = await Promise.all(
+      batch.map(async (session) => {
+        const messages = await Session.messages({ sessionID: session.id })
+        let sessionTokens = 0
+        let sessionCost = 0
+        const sessionModelUsage: Record<string, { count: number; tokens: number; cost: number }> = {}
+        const sessionTokenBreakdown = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+        const sessionCostBreakdown = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+
+        for (const message of messages) {
+          if (message.info.role === "assistant") {
+            const modelID = message.info.modelID
+            const tokens = message.info.tokens
+
+            if (tokens) {
+              const input = tokens.input || 0
+              const output = tokens.output || 0
+              const reasoning = tokens.reasoning || 0
+              const cacheRead = tokens.cache?.read || 0
+              const cacheWrite = tokens.cache?.write || 0
+              const total = input + output + reasoning + cacheRead + cacheWrite
+
+              sessionTokens += total
+              sessionTokenBreakdown.input += input
+              sessionTokenBreakdown.output += output + reasoning
+              sessionTokenBreakdown.cacheRead += cacheRead
+              sessionTokenBreakdown.cacheWrite += cacheWrite
+
+              // calculate cost
+              let messageCost = 0
+              if (modelID) {
+                const costBreakdown = await Pricing.calculateCostAsync(modelID, {
+                  input,
+                  output: output + reasoning,
+                  cacheCreation: cacheWrite,
+                  cacheRead,
+                })
+
+                if (costBreakdown) {
+                  messageCost = costBreakdown.totalCost
+                  sessionCostBreakdown.input += costBreakdown.inputCost
+                  sessionCostBreakdown.output += costBreakdown.outputCost
+                  sessionCostBreakdown.cacheRead += costBreakdown.cacheReadCost
+                  sessionCostBreakdown.cacheWrite += costBreakdown.cacheCreationCost
+                }
+
+                if (!sessionModelUsage[modelID]) {
+                  sessionModelUsage[modelID] = { count: 0, tokens: 0, cost: 0 }
+                }
+                sessionModelUsage[modelID].count++
+                sessionModelUsage[modelID].tokens += total
+                sessionModelUsage[modelID].cost += messageCost
+              }
+
+              sessionCost += messageCost
+            }
+          }
+        }
+
+        const dateKey = new Date(session.time.created).toISOString().split("T")[0]
+        return { sessionTokens, sessionCost, sessionModelUsage, sessionTokenBreakdown, sessionCostBreakdown, dateKey }
+      }),
+    )
+
+    for (const result of batchResults) {
+      stats.totalTokens += result.sessionTokens
+      stats.totalCost += result.sessionCost
+      stats.dailyActivity[result.dateKey] = (stats.dailyActivity[result.dateKey] || 0) + result.sessionTokens
+      stats.dailyCost[result.dateKey] = (stats.dailyCost[result.dateKey] || 0) + result.sessionCost
+
+      stats.tokenBreakdown.input += result.sessionTokenBreakdown.input
+      stats.tokenBreakdown.output += result.sessionTokenBreakdown.output
+      stats.tokenBreakdown.cacheRead += result.sessionTokenBreakdown.cacheRead
+      stats.tokenBreakdown.cacheWrite += result.sessionTokenBreakdown.cacheWrite
+
+      stats.costBreakdown.input += result.sessionCostBreakdown.input
+      stats.costBreakdown.output += result.sessionCostBreakdown.output
+      stats.costBreakdown.cacheRead += result.sessionCostBreakdown.cacheRead
+      stats.costBreakdown.cacheWrite += result.sessionCostBreakdown.cacheWrite
+
+      for (const [model, usage] of Object.entries(result.sessionModelUsage)) {
+        if (!stats.modelUsage[model]) {
+          stats.modelUsage[model] = { count: 0, tokens: 0, cost: 0 }
+        }
+        stats.modelUsage[model].count += usage.count
+        stats.modelUsage[model].tokens += usage.tokens
+        stats.modelUsage[model].cost += usage.cost
+      }
+    }
+  }
+
+  // calculate streaks
+  const sortedDates = Array.from(activeDaysSet).sort()
+  stats.activeDays = sortedDates.length
+
+  if (sortedDates.length > 0) {
+    let longestStreak = 1
+    let streak = 1
+
+    for (let i = 1; i < sortedDates.length; i++) {
+      const prev = new Date(sortedDates[i - 1])
+      const curr = new Date(sortedDates[i])
+      const diff = (curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000)
+
+      if (diff === 1) {
+        streak++
+        if (streak > longestStreak) longestStreak = streak
+      } else {
+        streak = 1
+      }
+    }
+
+    stats.longestStreak = longestStreak
+
+    // calculate current streak from today
+    const today = new Date().toISOString().split("T")[0]
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+
+    if (activeDaysSet.has(today) || activeDaysSet.has(yesterday)) {
+      let currentStreak = 1
+      let checkDate = new Date(activeDaysSet.has(today) ? today : yesterday)
+
+      while (true) {
+        checkDate.setDate(checkDate.getDate() - 1)
+        const checkKey = checkDate.toISOString().split("T")[0]
+        if (activeDaysSet.has(checkKey)) {
+          currentStreak++
+        } else {
+          break
+        }
+      }
+      stats.currentStreak = currentStreak
+    }
+  }
+
+  // find peak hour
+  let maxHourActivity = 0
+  for (const [hour, count] of Object.entries(stats.hourlyActivity)) {
+    if (count > maxHourActivity) {
+      maxHourActivity = count
+      stats.peakHour = parseInt(hour)
+    }
+  }
+
+  // calculate averages
+  if (stats.activeDays > 0) {
+    stats.costPerDay = stats.totalCost / stats.activeDays
+  }
+  if (stats.totalSessions > 0) {
+    stats.costPerSession = stats.totalCost / stats.totalSessions
+  }
+
+  return stats
 }
 
 async function getAllSessions(): Promise<Session.Info[]> {
@@ -147,311 +585,46 @@ async function getAllSessions(): Promise<Session.Info[]> {
   return sessions
 }
 
-async function aggregateSessionStats(
-  range: DaysRange,
-  projectFilter?: string,
-  providerFilter?: string,
-  modelFilter?: string,
-): Promise<SessionStats> {
-  const sessions = await getAllSessions()
-  const DAYS_IN_SECOND = 24 * 60 * 60 * 1000
-
-  let filteredSessions = filterSessionsByRange(sessions, range)
-
-  if (projectFilter !== undefined) {
-    if (projectFilter === "") {
-      const currentProject = await getCurrentProject()
-      filteredSessions = filteredSessions.filter((session) => session.projectID === currentProject.id)
-    } else {
-      filteredSessions = filteredSessions.filter((session) => session.projectID === projectFilter)
-    }
-  }
-
-  const stats: SessionStats = {
-    totalSessions: filteredSessions.length,
-    totalMessages: 0,
-    totalCost: 0,
-    totalTokens: {
-      input: 0,
-      output: 0,
-      reasoning: 0,
-      cache: {
-        read: 0,
-        write: 0,
-      },
-    },
-    toolUsage: {},
-    modelUsage: {},
-    dateRange: {
-      earliest: Date.now(),
-      latest: Date.now(),
-    },
-    days: 0,
-    costPerDay: 0,
-    tokensPerSession: 0,
-    medianTokensPerSession: 0,
-  }
-
-  if (filteredSessions.length > 1000) {
-    console.log(`Large dataset detected (${filteredSessions.length} sessions). This may take a while...`)
-  }
-
-  if (filteredSessions.length === 0) {
-    return stats
-  }
-
-  let earliestTime = Date.now()
-  let latestTime = 0
-
-  const sessionTotalTokens: number[] = []
-
-  const BATCH_SIZE = 20
-  for (let i = 0; i < filteredSessions.length; i += BATCH_SIZE) {
-    const batch = filteredSessions.slice(i, i + BATCH_SIZE)
-
-    const batchPromises = batch.map(async (session) => {
-      const messages = await Session.messages({ sessionID: session.id })
-
-      let sessionCost = 0
-      let sessionTokens = { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }
-      let sessionToolUsage: Record<string, number> = {}
-      let sessionModelUsage: Record<
-        string,
-        { count: number; cost: number; tokens: number; providerID?: string; modelID?: string }
-      > = {}
-
-      for (const message of messages) {
-        if (message.info.role === "assistant") {
-          const providerID = message.info.providerID
-          const modelID = message.info.modelID
-
-          // Apply filters
-          if (providerFilter && providerID !== providerFilter) continue
-          if (modelFilter && modelID && !modelID.includes(modelFilter)) continue
-
-          const tokens = message.info.tokens
-
-          // Calculate cost using Pricing module
-          let messageCost = message.info.cost || 0
-          if (tokens && modelID) {
-            const costBreakdown = await Pricing.calculateCostAsync(modelID, {
-              input: tokens.input || 0,
-              output: tokens.output || 0,
-              cacheCreation: tokens.cache?.write || 0,
-              cacheRead: tokens.cache?.read || 0,
-            })
-
-            if (costBreakdown) {
-              messageCost = costBreakdown.totalCost
-            }
-          }
-
-          sessionCost += messageCost
-
-          if (tokens) {
-            sessionTokens.input += tokens.input || 0
-            sessionTokens.output += tokens.output || 0
-            sessionTokens.reasoning += tokens.reasoning || 0
-            sessionTokens.cache.read += tokens.cache?.read || 0
-            sessionTokens.cache.write += tokens.cache?.write || 0
-          }
-
-          // Track model usage
-          if (modelID) {
-            const modelKey = `${providerID}/${modelID}`
-            if (!sessionModelUsage[modelKey]) {
-              sessionModelUsage[modelKey] = { count: 0, cost: 0, tokens: 0, providerID, modelID }
-            }
-            sessionModelUsage[modelKey].count++
-            sessionModelUsage[modelKey].cost += messageCost
-            sessionModelUsage[modelKey].tokens +=
-              (tokens?.input || 0) +
-              (tokens?.output || 0) +
-              (tokens?.reasoning || 0) +
-              (tokens?.cache?.read || 0) +
-              (tokens?.cache?.write || 0)
-          }
-        }
-
-        for (const part of message.parts) {
-          if (part.type === "tool" && part.tool) {
-            sessionToolUsage[part.tool] = (sessionToolUsage[part.tool] || 0) + 1
-          }
-        }
-      }
-
-      return {
-        messageCount: messages.length,
-        sessionCost,
-        sessionTokens,
-        sessionTotalTokens: sessionTokens.input + sessionTokens.output + sessionTokens.reasoning,
-        sessionToolUsage,
-        sessionModelUsage,
-        earliestTime: session.time.created,
-        latestTime: session.time.updated,
-      }
-    })
-
-    const batchResults = await Promise.all(batchPromises)
-
-    for (const result of batchResults) {
-      earliestTime = Math.min(earliestTime, result.earliestTime)
-      latestTime = Math.max(latestTime, result.latestTime)
-      sessionTotalTokens.push(result.sessionTotalTokens)
-
-      stats.totalMessages += result.messageCount
-      stats.totalCost += result.sessionCost
-      stats.totalTokens.input += result.sessionTokens.input
-      stats.totalTokens.output += result.sessionTokens.output
-      stats.totalTokens.reasoning += result.sessionTokens.reasoning
-      stats.totalTokens.cache.read += result.sessionTokens.cache.read
-      stats.totalTokens.cache.write += result.sessionTokens.cache.write
-
-      for (const [tool, count] of Object.entries(result.sessionToolUsage)) {
-        stats.toolUsage[tool] = (stats.toolUsage[tool] || 0) + count
-      }
-
-      for (const [model, usage] of Object.entries(result.sessionModelUsage)) {
-        if (!stats.modelUsage[model]) {
-          stats.modelUsage[model] = {
-            count: 0,
-            cost: 0,
-            tokens: 0,
-            providerID: usage.providerID,
-            modelID: usage.modelID,
-          }
-        }
-        stats.modelUsage[model].count += usage.count
-        stats.modelUsage[model].cost += usage.cost
-        stats.modelUsage[model].tokens += usage.tokens
-      }
-    }
-  }
-
-  const actualDays = Math.max(1, Math.ceil((latestTime - earliestTime) / DAYS_IN_SECOND))
-  stats.dateRange = {
-    earliest: earliestTime,
-    latest: latestTime,
-  }
-  stats.days = actualDays
-  stats.costPerDay = stats.totalCost / actualDays
-  const totalTokens = stats.totalTokens.input + stats.totalTokens.output + stats.totalTokens.reasoning
-  stats.tokensPerSession = filteredSessions.length > 0 ? totalTokens / filteredSessions.length : 0
-  sessionTotalTokens.sort((a, b) => a - b)
-  const mid = Math.floor(sessionTotalTokens.length / 2)
-  stats.medianTokensPerSession =
-    sessionTotalTokens.length === 0
-      ? 0
-      : sessionTotalTokens.length % 2 === 0
-        ? (sessionTotalTokens[mid - 1] + sessionTotalTokens[mid]) / 2
-        : sessionTotalTokens[mid]
-
-  return stats
-}
-
-export function displayStats(stats: SessionStats, toolLimit?: number, providerFilter?: string, modelFilter?: string) {
-  const width = 56
-
-  function renderRow(label: string, value: string): string {
-    const availableWidth = width - 1
-    const paddingNeeded = availableWidth - label.length - value.length
-    const padding = Math.max(0, paddingNeeded)
-    return `│${label}${" ".repeat(padding)}${value} │`
-  }
-
-  // Overview section
-  console.log("┌────────────────────────────────────────────────────────┐")
-  console.log("│                       OVERVIEW                         │")
-  console.log("├────────────────────────────────────────────────────────┤")
-  console.log(renderRow("Sessions", stats.totalSessions.toLocaleString()))
-  console.log(renderRow("Messages", stats.totalMessages.toLocaleString()))
-  console.log(renderRow("Days", stats.days.toString()))
-  if (providerFilter) {
-    console.log(renderRow("Provider Filter", providerFilter))
-  }
-  if (modelFilter) {
-    console.log(renderRow("Model Filter", modelFilter))
-  }
-  console.log("└────────────────────────────────────────────────────────┘")
-  console.log()
-
-  // Cost & Tokens section
-  console.log("┌────────────────────────────────────────────────────────┐")
-  console.log("│                    COST & TOKENS                       │")
-  console.log("├────────────────────────────────────────────────────────┤")
-  const cost = isNaN(stats.totalCost) ? 0 : stats.totalCost
-  const costPerDay = isNaN(stats.costPerDay) ? 0 : stats.costPerDay
-  const tokensPerSession = isNaN(stats.tokensPerSession) ? 0 : stats.tokensPerSession
-  console.log(renderRow("Total Cost", `$${cost.toFixed(2)}`))
-  console.log(renderRow("Avg Cost/Day", `$${costPerDay.toFixed(2)}`))
-  console.log(renderRow("Avg Tokens/Session", formatNumber(Math.round(tokensPerSession))))
-  const medianTokensPerSession = isNaN(stats.medianTokensPerSession) ? 0 : stats.medianTokensPerSession
-  console.log(renderRow("Median Tokens/Session", formatNumber(Math.round(medianTokensPerSession))))
-  console.log(renderRow("Input", formatNumber(stats.totalTokens.input)))
-  console.log(renderRow("Output", formatNumber(stats.totalTokens.output)))
-  console.log(renderRow("Cache Read", formatNumber(stats.totalTokens.cache.read)))
-  console.log(renderRow("Cache Write", formatNumber(stats.totalTokens.cache.write)))
-  console.log("└────────────────────────────────────────────────────────┘")
-  console.log()
-
-  // Most Used Models section
-  if (Object.keys(stats.modelUsage).length > 0) {
-    const sortedModels = Object.entries(stats.modelUsage).sort(([, a], [, b]) => b.count - a.count)
-    const topModels = sortedModels.slice(0, 5)
-
-    console.log("┌────────────────────────────────────────────────────────┐")
-    console.log("│                   MOST USED MODELS                     │")
-    console.log("├────────────────────────────────────────────────────────┤")
-
-    for (const [model, usage] of topModels) {
-      const maxModelLength = 45
-      const truncatedModel = model.length > maxModelLength ? model.substring(0, maxModelLength - 2) + ".." : model
-      console.log(renderRow(truncatedModel, `${usage.count}×`))
-      console.log(renderRow("  Cost", `$${usage.cost.toFixed(2)}`))
-      console.log(renderRow("  Tokens", formatNumber(usage.tokens)))
-      if (topModels.indexOf([model, usage]) < topModels.length - 1) {
-        console.log("├────────────────────────────────────────────────────────┤")
-      }
-    }
-    console.log("└────────────────────────────────────────────────────────┘")
-    console.log()
-  }
-
-  // Tool Usage section
-  if (Object.keys(stats.toolUsage).length > 0) {
-    const sortedTools = Object.entries(stats.toolUsage).sort(([, a], [, b]) => b - a)
-    const toolsToDisplay = toolLimit ? sortedTools.slice(0, toolLimit) : sortedTools
-
-    console.log("┌────────────────────────────────────────────────────────┐")
-    console.log("│                      TOOL USAGE                        │")
-    console.log("├────────────────────────────────────────────────────────┤")
-
-    const maxCount = Math.max(...toolsToDisplay.map(([, count]) => count))
-    const totalToolUsage = Object.values(stats.toolUsage).reduce((a, b) => a + b, 0)
-
-    for (const [tool, count] of toolsToDisplay) {
-      const barLength = Math.max(1, Math.floor((count / maxCount) * 20))
-      const bar = "█".repeat(barLength)
-      const percentage = ((count / totalToolUsage) * 100).toFixed(1)
-
-      const maxToolLength = 18
-      const truncatedTool = tool.length > maxToolLength ? tool.substring(0, maxToolLength - 2) + ".." : tool
-      const toolName = truncatedTool.padEnd(maxToolLength)
-
-      const content = ` ${toolName} ${bar.padEnd(20)} ${count.toString().padStart(3)} (${percentage.padStart(4)}%)`
-      const padding = Math.max(0, width - content.length - 1)
-      console.log(`│${content}${" ".repeat(padding)} │`)
-    }
-    console.log("└────────────────────────────────────────────────────────┘")
-  }
-  console.log()
-}
-
 function formatNumber(num: number): string {
   if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + "M"
-  } else if (num >= 1000) {
-    return (num / 1000).toFixed(1) + "K"
+    return (num / 1000000).toFixed(1) + "m"
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + "k"
   }
   return num.toString()
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60
+    return `${hours}h ${remainingMinutes}m`
+  }
+  if (minutes > 0) {
+    return `${minutes}m`
+  }
+  return `${seconds}s`
+}
+
+function formatHourRange(hour: number): string {
+  const start = hour.toString().padStart(2, "0")
+  const end = ((hour + 1) % 24).toString().padStart(2, "0")
+  return `${start}:00-${end}:00`
+}
+
+function truncateModel(name: string, maxLength: number): string {
+  if (name.length <= maxLength) return name
+  return name.slice(0, maxLength - 2) + ".."
+}
+
+function formatCurrency(amount: number): string {
+  if (amount === 0) return "$0.00"
+  if (amount < 0.00001) return "<$0.00001"
+  if (amount < 0.01) return `$${amount.toFixed(5)}`
+  if (amount < 1) return `$${amount.toFixed(3)}`
+  return `$${amount.toFixed(2)}`
 }

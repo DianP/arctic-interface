@@ -74,12 +74,13 @@
     [data-slot="input-input"] {
       color: var(--text-strong);
 
-      display: flex;
+      display: block;
       height: 32px;
       padding: 2px 12px;
-      align-items: center;
       flex: 1;
       min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
 
       background: transparent;
       border: none;

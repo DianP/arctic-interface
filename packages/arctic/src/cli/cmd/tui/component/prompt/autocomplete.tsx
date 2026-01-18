@@ -224,6 +224,7 @@ export function Autocomplete(props: {
       "session",
       "status",
       "usage",
+      "stats",
       "mcp",
       "theme",
       "connect",
@@ -403,6 +404,11 @@ export function Autocomplete(props: {
         display: "/usage",
         description: "show usage summary",
         onSelect: () => command.trigger("arctic.usage"),
+      },
+      {
+        display: "/stats",
+        description: "show activity stats",
+        onSelect: () => command.trigger("arctic.stats"),
       },
       {
         display: "/mcp",

@@ -19,7 +19,6 @@ import {
   addDefaultParsers,
   BoxRenderable,
   MacOSScrollAccel,
-  RGBA,
   ScrollBoxRenderable,
   type ScrollAcceleration,
 } from "@opentui/core"
@@ -37,7 +36,9 @@ import { useTheme } from "@tui/context/theme"
 import { DialogConfirm } from "@tui/ui/dialog-confirm"
 import { DialogPrompt } from "@tui/ui/dialog-prompt"
 import { DialogSelect } from "@tui/ui/dialog-select"
+import { createShimmerColors, createShimmerFrames, getRandomWord } from "@tui/ui/shimmer-text"
 import { parsePatch } from "diff"
+import "opentui-spinner/solid"
 import path from "path"
 import {
   createContext,
@@ -69,8 +70,6 @@ import { DialogMessage } from "./dialog-message"
 import { DialogTimeline } from "./dialog-timeline"
 import { Footer } from "./footer.tsx"
 import { Sidebar } from "./sidebar"
-import { getRandomWord, createShimmerFrames, createShimmerColors } from "@tui/ui/shimmer-text"
-import "opentui-spinner/solid"
 
 addDefaultParsers(parsers.parsers)
 
@@ -1391,21 +1390,28 @@ function UserMessage(props: {
       <Show when={text()}>
         <box id={props.message.id} marginTop={props.index === 0 ? 0 : 1}>
           <box onMouseUp={props.onMouseUp} paddingTop={0} paddingBottom={0}>
-            <box paddingLeft={0} backgroundColor={theme.backgroundElement} alignSelf="flex-start">
+            <box
+              paddingLeft={1}
+              paddingRight={1}
+              backgroundColor={theme.backgroundElement}
+              alignSelf="flex-start"
+              flexDirection="row"
+            >
+              <text fg={theme.textMuted}>{"> "}</text>
               <Switch>
                 <Match when={ctx.userMessageMarkdown()}>
                   <code
                     filetype="markdown"
-                    drawUnstyledText={true}
+                    drawUnstyledText={false}
                     streaming={false}
                     syntaxStyle={syntax()}
                     content={formatUserText(text()?.text ?? "")}
                     conceal={ctx.conceal()}
-                    fg={theme.background}
+                    fg={theme.textMuted}
                   />
                 </Match>
                 <Match when={!ctx.userMessageMarkdown()}>
-                  <text fg={theme.background}>{formatUserText(text()?.text ?? "")}</text>
+                  <text fg={theme.textMuted}>{formatUserText(text()?.text ?? "")}</text>
                 </Match>
               </Switch>
             </box>
@@ -1506,10 +1512,14 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
             const timer = setInterval(() => setWord(getRandomWord()), 4000)
             onCleanup(() => clearInterval(timer))
           })
-          const frames = createMemo(() => createShimmerFrames(word(), { color: theme.primary, baseColor: theme.textMuted }))
-          const colors = createMemo(() => createShimmerColors(word(), { color: theme.primary, baseColor: theme.textMuted }))
+          const frames = createMemo(() =>
+            createShimmerFrames(word(), { color: theme.primary, baseColor: theme.textMuted }),
+          )
+          const colors = createMemo(() =>
+            createShimmerColors(word(), { color: theme.primary, baseColor: theme.textMuted }),
+          )
           return (
-            <box paddingLeft={2} marginTop={1} flexDirection="row" gap={1}>
+            <box marginTop={1} flexDirection="row" gap={1}>
               {/* @ts-ignore */}
               <spinner frames={frames()} color={colors()} interval={60} />
               <text fg={ctx.interruptCount() > 0 ? theme.primary : theme.textMuted}>
@@ -1605,8 +1615,12 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
               >
                 {(() => {
                   const thinkingText = "Thinking"
-                  const frames = createMemo(() => createShimmerFrames(thinkingText, { color: theme.text, baseColor: theme.textMuted }))
-                  const colors = createMemo(() => createShimmerColors(thinkingText, { color: theme.text, baseColor: theme.textMuted }))
+                  const frames = createMemo(() =>
+                    createShimmerFrames(thinkingText, { color: theme.text, baseColor: theme.textMuted }),
+                  )
+                  const colors = createMemo(() =>
+                    createShimmerColors(thinkingText, { color: theme.text, baseColor: theme.textMuted }),
+                  )
                   return (
                     <box flexDirection="row">
                       {/* @ts-ignore */}
@@ -1629,27 +1643,35 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage; textIndex?: number }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
+  const isFirst = () => props.textIndex === 0
   return (
     <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={0} marginTop={props.textIndex === 0 ? 1 : 0}>
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          streaming={true}
-          syntaxStyle={syntax()}
-          content={formatAssistantText(props.part.text.trim(), props.textIndex === 0)}
-          conceal={ctx.conceal()}
-          fg={theme.text}
-        />
+      <box id={"text-" + props.part.id} paddingLeft={0} marginTop={isFirst() ? 1 : 0} flexDirection="row">
+        <Show when={isFirst()}>
+          <text fg={theme.primary}>● </text>
+        </Show>
+        <Show when={!isFirst()}>
+          <text>{"  "}</text>
+        </Show>
+        <box flexGrow={1} flexShrink={1}>
+          <code
+            filetype="markdown"
+            drawUnstyledText={false}
+            streaming={true}
+            syntaxStyle={syntax()}
+            content={formatAssistantText(props.part.text.trim(), isFirst())}
+            conceal={ctx.conceal()}
+            fg={theme.text}
+          />
+        </box>
       </box>
     </Show>
   )
 }
 
 function formatUserText(value: string) {
-  if (!value.trim()) return "> "
-  const lines = value.split(/\r?\n/)
-  return lines.map((line, i) => (i === 0 ? `> ${line}` : `  ${line}`)).join("\n")
+  if (!value.trim()) return ""
+  return value
 }
 
 function formatAssistantText(value: string, isFirstTextPart: boolean) {
@@ -1658,7 +1680,7 @@ function formatAssistantText(value: string, isFirstTextPart: boolean) {
   return lines
     .map((line, idx) => {
       if (!line.trim()) return ""
-      if (isFirstTextPart && idx === 0) return `● ${line}`
+      if (isFirstTextPart && idx === 0) return line
       return `  ${line}`
     })
     .join("\n")

@@ -13,6 +13,7 @@ import { DialogProvider as DialogProviderList } from "@tui/component/dialog-prov
 import { DialogConnections } from "@tui/component/dialog-connections"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
 import { DialogStatus } from "@tui/component/dialog-status"
+import { DialogStats } from "@tui/component/dialog-stats"
 import { DialogThemeList } from "@tui/component/dialog-theme-list"
 import { DialogUsage } from "@tui/component/dialog-usage"
 import { KeybindProvider, useKeybind } from "@tui/context/keybind"
@@ -549,6 +550,14 @@ function App() {
       keybind: "usage_view",
       onSelect: () => {
         dialog.replace(() => <DialogUsage />)
+      },
+      category: "System",
+    },
+    {
+      title: "View stats",
+      value: "arctic.stats",
+      onSelect: () => {
+        dialog.replace(() => <DialogStats />)
       },
       category: "System",
     },
