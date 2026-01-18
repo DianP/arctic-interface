@@ -1,4 +1,4 @@
-import { Renderable } from "@opentui/core"
+import { Renderable, RGBA } from "@opentui/core"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/context/theme"
 import { batch, createContext, Show, useContext, type JSX, type ParentProps } from "solid-js"

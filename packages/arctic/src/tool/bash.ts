@@ -86,6 +86,7 @@ export const BashTool = Tool.define("bash", async () => {
       
       const checkExternalDirectory = async (dir: string) => {
         if (Filesystem.contains(Instance.directory, dir)) return
+        if (await Permission.isBypassEnabled()) return
         const title = `This command references paths outside of ${Instance.directory}`
         if (agent.permission.external_directory === "ask") {
           await Permission.ask({

@@ -1391,7 +1391,7 @@ function UserMessage(props: {
       <Show when={text()}>
         <box id={props.message.id} marginTop={props.index === 0 ? 0 : 1}>
           <box onMouseUp={props.onMouseUp} paddingTop={0} paddingBottom={0}>
-            <box paddingLeft={0} backgroundColor={theme.backgroundElement}>
+            <box paddingLeft={0} backgroundColor={theme.backgroundElement} alignSelf="flex-start">
               <Switch>
                 <Match when={ctx.userMessageMarkdown()}>
                   <code
@@ -1648,10 +1648,8 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
 
 function formatUserText(value: string) {
   if (!value.trim()) return "> "
-  return value
-    .split(/\r?\n/)
-    .map((line) => `> ${line}`)
-    .join("\n")
+  const lines = value.split(/\r?\n/)
+  return lines.map((line, i) => (i === 0 ? `> ${line}` : `  ${line}`)).join("\n")
 }
 
 function formatAssistantText(value: string, isFirstTextPart: boolean) {

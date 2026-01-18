@@ -46,30 +46,32 @@ export const EditTool = Tool.define("edit", {
     const filePath = path.isAbsolute(params.filePath) ? params.filePath : path.join(Instance.directory, params.filePath)
     if (!Filesystem.contains(Instance.directory, filePath)) {
       const parentDir = path.dirname(filePath)
-      if (agent.permission.external_directory === "ask") {
-        await Permission.ask({
-          type: "external_directory",
-          pattern: [parentDir, path.join(parentDir, "*")],
-          sessionID: ctx.sessionID,
-          messageID: ctx.messageID,
-          callID: ctx.callID,
-          title: `Edit file outside working directory: ${filePath}`,
-          metadata: {
-            filepath: filePath,
-            parentDir,
-          },
-        })
-      } else if (agent.permission.external_directory === "deny") {
-        throw new Permission.RejectedError(
-          ctx.sessionID,
-          "external_directory",
-          ctx.callID,
-          {
-            filepath: filePath,
-            parentDir,
-          },
-          `File ${filePath} is not in the current working directory`,
-        )
+      if (!(await Permission.isBypassEnabled())) {
+        if (agent.permission.external_directory === "ask") {
+          await Permission.ask({
+            type: "external_directory",
+            pattern: [parentDir, path.join(parentDir, "*")],
+            sessionID: ctx.sessionID,
+            messageID: ctx.messageID,
+            callID: ctx.callID,
+            title: `Edit file outside working directory: ${filePath}`,
+            metadata: {
+              filepath: filePath,
+              parentDir,
+            },
+          })
+        } else if (agent.permission.external_directory === "deny") {
+          throw new Permission.RejectedError(
+            ctx.sessionID,
+            "external_directory",
+            ctx.callID,
+            {
+              filepath: filePath,
+              parentDir,
+            },
+            `File ${filePath} is not in the current working directory`,
+          )
+        }
       }
     }
 

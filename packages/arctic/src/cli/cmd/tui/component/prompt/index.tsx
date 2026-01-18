@@ -200,28 +200,20 @@ export function Prompt(props: PromptProps) {
     return sync.data.message[props.sessionID] ?? []
   })
 
-  const formatTokens = (tokens: number): string => {
-    if (tokens >= 1000) {
-      return `${Math.round(tokens / 1000)}k`
-    }
-    return tokens.toString()
-  }
-
   const [sessionCost, setSessionCost] = createSignal<number | undefined>(undefined)
-  const [dailyCostByModel, setDailyCostByModel] = createSignal<Record<string, { name: string; cost: number }>>({})
+  const [dailyCost, setDailyCost] = createSignal<number | undefined>(undefined)
   const [usageLimits, setUsageLimits] = createSignal<
     | {
         percent?: number
-        remaining?: number
         timeLeft?: string
       }
     | undefined
   >(undefined)
 
+  // Calculate session cost
   createEffect(() => {
     const msgs = messages()
     let cancelled = false
-
     let syncTotal = 0
     let syncHasPricing = false
     let needsAsync = false
@@ -265,10 +257,7 @@ export function Prompt(props: PromptProps) {
             }
           }
         }
-
-        if (!cancelled) {
-          setSessionCost(hasPricing ? total : undefined)
-        }
+        if (!cancelled) setSessionCost(hasPricing ? total : undefined)
       })().catch(() => {})
     }
 
@@ -277,43 +266,26 @@ export function Prompt(props: PromptProps) {
     })
   })
 
-  // Calculate daily cost per model used in current session
+  // Calculate daily cost
   createEffect(() => {
-    const msgs = messages()
     const sessionID = props.sessionID
     if (!sessionID) return
 
-    // Get unique models used in this session
-    const modelsInSession = new Set<string>()
-    for (const msg of msgs) {
-      if (msg.role === "assistant" && msg.tokens.output > 0) {
-        const assistantMsg = msg as AssistantMessage
-        modelsInSession.add(assistantMsg.modelID)
-      }
-    }
-
-    if (modelsInSession.size === 0) return // Calculate daily costs (async because we need to scan all messages)
     ;(async () => {
       const now = Date.now()
       const startOfDay = new Date(now)
       startOfDay.setHours(0, 0, 0, 0)
       const dayStart = startOfDay.getTime()
 
-      const dailyCosts: Record<string, { name: string; cost: number }> = {}
-
-      // Scan all messages across all sessions for today
+      let total = 0
+      let hasPricing = false
       const allMessages = Object.values(sync.data.message).flat()
 
       for (const msg of allMessages) {
         if (msg.role === "assistant" && msg.tokens.output > 0) {
           const assistantMsg = msg as AssistantMessage
           const messageTime = assistantMsg.time?.completed ?? assistantMsg.time?.created
-
-          // Only count messages from today
           if (!messageTime || messageTime < dayStart) continue
-
-          // Only count models used in current session
-          if (!modelsInSession.has(assistantMsg.modelID)) continue
 
           const costBreakdown = await Pricing.calculateCostAsync(assistantMsg.modelID, {
             input: assistantMsg.tokens.input,
@@ -321,122 +293,74 @@ export function Prompt(props: PromptProps) {
             cacheCreation: assistantMsg.tokens.cache.write,
             cacheRead: assistantMsg.tokens.cache.read,
           })
-
           if (costBreakdown) {
-            if (!dailyCosts[assistantMsg.modelID]) {
-              const provider = sync.data.provider.find((p) => p.id === assistantMsg.providerID)
-              const modelInfo = provider?.models?.[assistantMsg.modelID]
-              dailyCosts[assistantMsg.modelID] = {
-                name: modelInfo?.name ?? assistantMsg.modelID,
-                cost: 0,
-              }
-            }
-            dailyCosts[assistantMsg.modelID].cost += costBreakdown.totalCost
+            hasPricing = true
+            total += costBreakdown.totalCost
           }
         }
       }
 
-      setDailyCostByModel(dailyCosts)
+      setDailyCost(hasPricing ? total : undefined)
     })().catch(() => {})
   })
 
-  // Fetch usage limits for the current provider
+  // Fetch usage limits for reset time
   createEffect(() => {
     const model = local.model.current()
     if (!model) return
-
     const sessionID = props.sessionID
     if (!sessionID) return
 
-    // Fetch usage limits periodically
     let cancelled = false
     const fetchLimits = async () => {
-      try {
-        const providerID = (() => {
-          if (model.providerID === "minimax") {
-            const hasCodingPlan = sync.data.provider.some((item) => item.id === "minimax-coding-plan")
-            return hasCodingPlan ? "minimax-coding-plan" : model.providerID
-          }
-          return model.providerID
-        })()
-
-        const record = await fetchUsageRecord({
-          baseUrl: sdk.url,
-          directory: sync.data.path.directory,
-          sessionID,
-          providerID,
-        })
-
-        if (cancelled) return
-
-        if (!record || !record.limits) {
-          setUsageLimits(undefined)
-          return
+      const providerID = (() => {
+        if (model.providerID === "minimax") {
+          const hasCodingPlan = sync.data.provider.some((item) => item.id === "minimax-coding-plan")
+          return hasCodingPlan ? "minimax-coding-plan" : model.providerID
         }
+        return model.providerID
+      })()
 
-        const primary = record.limits.primary
-        if (!primary) {
-          setUsageLimits(undefined)
-          return
-        }
+      const record = await fetchUsageRecord({
+        baseUrl: sdk.url,
+        directory: sync.data.path.directory,
+        sessionID,
+        providerID,
+      }).catch(() => undefined)
 
-        // Calculate time left if we have reset timestamp
-        let timeLeft: string | undefined
-        if (primary.resetsAt) {
-          const now = Date.now()
-          const resetTime = primary.resetsAt * 1000
-          const diff = resetTime - now
+      if (cancelled) return
+      if (!record?.limits?.primary) {
+        setUsageLimits(undefined)
+        return
+      }
 
-          if (diff > 0) {
-            const totalMinutes = Math.floor(diff / 60000)
-            const hours = Math.floor(totalMinutes / 60)
-            const minutes = totalMinutes % 60
-            if (hours > 0) {
-              timeLeft = `${hours}h ${minutes}m`
-            } else {
-              timeLeft = `${minutes}m`
-            }
-          }
-        }
-
-        // For providers that don't use percentage (e.g., kimi, z.ai with request counts)
-        // We'll show "remaining" if available - but this info is in the record itself, not primary
-        const usedPercent = primary.usedPercent ?? undefined
-
-        setUsageLimits({
-          percent: usedPercent !== null ? usedPercent : undefined,
-          remaining: undefined, // Not available in this structure
-          timeLeft,
-        })
-      } catch (error) {
-        if (!cancelled) {
-          setUsageLimits(undefined)
+      const primary = record.limits.primary
+      let timeLeft: string | undefined
+      if (primary.resetsAt) {
+        const diff = primary.resetsAt * 1000 - Date.now()
+        if (diff > 0) {
+          const totalMinutes = Math.floor(diff / 60000)
+          const hours = Math.floor(totalMinutes / 60)
+          const minutes = totalMinutes % 60
+          timeLeft = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
         }
       }
+
+      const usedPercent = primary.usedPercent ?? undefined
+
+      setUsageLimits({
+        percent: usedPercent !== undefined ? usedPercent : undefined,
+        timeLeft,
+      })
     }
 
     fetchLimits()
-    const interval = setInterval(fetchLimits, 60000) // Refresh every minute
+    const interval = setInterval(fetchLimits, 60000)
 
     onCleanup(() => {
       cancelled = true
       clearInterval(interval)
     })
-  })
-
-  const context = createMemo(() => {
-    const last = messages().findLast((x) => x.role === "assistant" && x.tokens.output > 0) as AssistantMessage
-    if (!last) return { tokens: 0, tokensFormatted: "0", percentage: 0, cost: undefined }
-    const total =
-      last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write
-    const model = sync.data.provider.find((x) => x.id === last.providerID)?.models[last.modelID]
-
-    return {
-      tokens: total,
-      tokensFormatted: formatTokens(total),
-      percentage: model?.limit.context ? Math.round((total / model.limit.context) * 100) : 0,
-      cost: sessionCost(),
-    }
   })
 
   function promptModelWarning() {
@@ -1462,7 +1386,7 @@ export function Prompt(props: PromptProps) {
         agentStyleId={agentStyleId}
         promptPartTypeId={() => promptPartTypeId}
       />
-      <box ref={(r) => (anchor = r)} width="100%" paddingLeft="0.5%" paddingRight="0.5%">
+      <box ref={(r) => (anchor = r)} width="100%" paddingLeft={1} paddingRight={1}>
         <box
           border={["top", "bottom"]}
           borderColor={highlight()}
@@ -1477,8 +1401,10 @@ export function Prompt(props: PromptProps) {
           width="100%"
         >
           <box flexDirection="row" alignItems="flex-start" width="100%" gap={1}>
-            <text attributes={TextAttributes.BOLD}>{store.mode === "shell" ? "!" : ">"}</text>
-            <box flexGrow={1} width="100%">
+            <text attributes={TextAttributes.BOLD} fg={highlight()}>
+              {store.mode === "shell" ? "!" : ">"}
+            </text>
+            <box flexGrow={1}>
               <textarea
                 width="100%"
                 backgroundColor="transparent"
@@ -1671,186 +1597,130 @@ export function Prompt(props: PromptProps) {
             </box>
           </box>
         </box>
-        <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1} paddingLeft={1}>
+        <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
           <text fg={highlight()}>
-            {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
+            {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}
           </text>
           <Show when={store.mode === "normal"}>
-            <box
-              flexDirection="row"
-              gap={1}
-              onMouseUp={() => {
-                command.trigger("prompt.model")
-              }}
-            >
+            <text fg={theme.textMuted}>·</text>
+            <box flexDirection="row" gap={1} onMouseUp={() => dialog.replace(() => <DialogModel />)}>
               <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
                 {displayModel().model}
               </text>
               <text fg={theme.textMuted}>{displayModel().provider}</text>
             </box>
-          </Show>
-          <Show when={context().tokens > 0 || usageLimits() !== undefined}>
-            <box flexDirection="row" gap={1} flexShrink={0}>
-              <Show when={context().tokens > 0}>
-                <text fg={theme.textMuted}>·</text>
-                <text fg={theme.textMuted}>{context().tokensFormatted} tokens</text>
-              </Show>
-              <Show when={context().cost !== undefined}>
-                <text fg={theme.textMuted}>·</text>
-                <text fg={theme.textMuted}>
-                  session: ${context().cost! < 0.01 ? "0.00" : context().cost!.toFixed(2)}
-                </text>
-              </Show>
-              <Show when={Object.keys(dailyCostByModel()).length > 0}>
-                <text fg={theme.textMuted}>·</text>
-                <text fg={theme.textMuted}>
-                  today: $
-                  {(() => {
-                    const totalToday = Object.values(dailyCostByModel()).reduce((sum, data) => sum + data.cost, 0)
-                    return totalToday < 0.01 ? "0.00" : totalToday.toFixed(2)
-                  })()}
-                </text>
-              </Show>
-              <Show when={context().tokens > 0}>
-                <text fg={theme.textMuted}>·</text>
-                <text fg={theme.textMuted}>{context().percentage}% context</text>
-              </Show>
-              <Show when={usageLimits() !== undefined}>
-                <text fg={theme.textMuted}>·</text>
-                {(() => {
-                  const limits = usageLimits()!
-                  const model = local.model.current()
-                  const isMinimax = model?.providerID === "minimax" || model?.providerID === "minimax-coding-plan"
-                  const remaining = limits.percent !== undefined ? Math.max(0, 100 - limits.percent) : undefined
-                  const percentValue = isMinimax ? (limits.percent ?? undefined) : remaining
-                  const color = percentValue !== undefined && percentValue <= 15 ? theme.error : theme.textMuted
-                  const label = (() => {
-                    if (percentValue !== undefined) {
-                      return `${percentValue.toFixed(0)}% left${limits.timeLeft ? ` (${limits.timeLeft})` : ""}`
-                    }
-                    return limits.timeLeft ? `resets in ${limits.timeLeft}` : ""
-                  })()
-                  return <text fg={color}>{label}</text>
-                })()}
-              </Show>
-            </box>
+            <Show when={usageLimits() !== undefined}>
+              <text fg={theme.textMuted}>·</text>
+              {(() => {
+                const limits = usageLimits()!
+                const model = local.model.current()
+                const isMinimax = model?.providerID === "minimax" || model?.providerID === "minimax-coding-plan"
+                const remaining = limits.percent !== undefined ? Math.max(0, 100 - limits.percent) : undefined
+                const percentValue = isMinimax ? (limits.percent ?? undefined) : remaining
+                const color = percentValue !== undefined && percentValue <= 15 ? theme.error : theme.textMuted
+                const label = (() => {
+                  if (percentValue !== undefined) {
+                    return `${percentValue.toFixed(0)}% left${limits.timeLeft ? ` (${limits.timeLeft})` : ""}`
+                  }
+                  return limits.timeLeft ? `resets in ${limits.timeLeft}` : ""
+                })()
+                return (
+                  <text fg={color} onMouseUp={() => command.trigger("arctic.usage", "prompt")}>
+                    {label}
+                  </text>
+                )
+              })()}
+            </Show>
+            <Show when={sessionCost() !== undefined}>
+              <text fg={theme.textMuted}>·</text>
+              <text fg={theme.textMuted}>
+                session: ${sessionCost()! < 0.01 ? "0.00" : sessionCost()!.toFixed(2)}
+              </text>
+            </Show>
+            <Show when={dailyCost() !== undefined}>
+              <text fg={theme.textMuted}>·</text>
+              <text fg={theme.textMuted}>
+                today: ${dailyCost()! < 0.01 ? "0.00" : dailyCost()!.toFixed(2)}
+              </text>
+            </Show>
           </Show>
         </box>
-        <Show when={sync.data.permission_bypass_enabled}>
-          <box paddingLeft={1}>
-            <text fg={theme.error} attributes={TextAttributes.BOLD}>
-              permission bypass enabled
-            </text>
-          </box>
-        </Show>
         <Show when={props.exitConfirmation}>
           <text fg={theme.textMuted} paddingLeft={1}>
             Press ctrl+c again to exit
           </text>
         </Show>
-        <box flexDirection="row" justifyContent="space-between">
-          <Show when={status().type !== "idle"} fallback={<text />}>
-            <box
-              flexDirection="row"
-              gap={1}
-              flexGrow={1}
-              justifyContent={status().type === "retry" ? "space-between" : "flex-start"}
-            >
-              <box flexShrink={0} flexDirection="row" gap={1}>
-                {/* @ts-ignore // SpinnerOptions doesn't support marginLeft */}
-                <spinner marginLeft={1} color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
-                <box flexDirection="row" gap={1} flexShrink={0}>
-                  {(() => {
-                    const retry = createMemo(() => {
-                      const s = status()
-                      if (s.type !== "retry") return
-                      return s
-                    })
-                    const message = createMemo(() => {
-                      const r = retry()
-                      if (!r) return
-                      if (r.message.includes("exceeded your current quota") && r.message.includes("gemini"))
-                        return "gemini is way too hot right now"
-                      if (r.message.length > 80) return r.message.slice(0, 80) + "..."
-                      return r.message
-                    })
-                    const isTruncated = createMemo(() => {
-                      const r = retry()
-                      if (!r) return false
-                      return r.message.length > 120
-                    })
-                    const [seconds, setSeconds] = createSignal(0)
-                    onMount(() => {
-                      const timer = setInterval(() => {
-                        const next = retry()?.next
-                        if (next) setSeconds(Math.round((next - Date.now()) / 1000))
-                      }, 1000)
+        <Show when={status().type !== "idle"}>
+          <box flexDirection="row" justifyContent="space-between" gap={1}>
+            <box flexShrink={0} flexDirection="row" gap={1}>
+              {/* @ts-ignore // SpinnerOptions doesn't support marginLeft */}
+              <spinner marginLeft={1} color={spinnerDef().color} frames={spinnerDef().frames} interval={40} />
+              <box flexDirection="row" gap={1} flexShrink={0}>
+                {(() => {
+                  const retry = createMemo(() => {
+                    const s = status()
+                    if (s.type !== "retry") return
+                    return s
+                  })
+                  const message = createMemo(() => {
+                    const r = retry()
+                    if (!r) return
+                    if (r.message.includes("exceeded your current quota") && r.message.includes("gemini"))
+                      return "gemini is way too hot right now"
+                    if (r.message.length > 80) return r.message.slice(0, 80) + "..."
+                    return r.message
+                  })
+                  const isTruncated = createMemo(() => {
+                    const r = retry()
+                    if (!r) return false
+                    return r.message.length > 120
+                  })
+                  const [seconds, setSeconds] = createSignal(0)
+                  onMount(() => {
+                    const timer = setInterval(() => {
+                      const next = retry()?.next
+                      if (next) setSeconds(Math.round((next - Date.now()) / 1000))
+                    }, 1000)
 
-                      onCleanup(() => {
-                        clearInterval(timer)
-                      })
+                    onCleanup(() => {
+                      clearInterval(timer)
                     })
-                    const handleMessageClick = () => {
-                      const r = retry()
-                      if (!r) return
-                      if (isTruncated()) {
-                        DialogAlert.show(dialog, "Retry Error", r.message)
-                      }
+                  })
+                  const handleMessageClick = () => {
+                    const r = retry()
+                    if (!r) return
+                    if (isTruncated()) {
+                      DialogAlert.show(dialog, "Retry Error", r.message)
                     }
+                  }
 
-                    const retryText = () => {
-                      const r = retry()
-                      if (!r) return ""
-                      const baseMessage = message()
-                      const truncatedHint = isTruncated() ? " (click to expand)" : ""
-                      const retryInfo = ` [retrying ${seconds() > 0 ? `in ${seconds()}s ` : ""}attempt #${r.attempt}]`
-                      return baseMessage + truncatedHint + retryInfo
-                    }
+                  const retryText = () => {
+                    const r = retry()
+                    if (!r) return ""
+                    const baseMessage = message()
+                    const truncatedHint = isTruncated() ? " (click to expand)" : ""
+                    const retryInfo = ` [retrying ${seconds() > 0 ? `in ${seconds()}s ` : ""}attempt #${r.attempt}]`
+                    return baseMessage + truncatedHint + retryInfo
+                  }
 
-                    return (
-                      <Show when={retry()}>
-                        <box onMouseUp={handleMessageClick}>
-                          <text fg={theme.error}>{retryText()}</text>
-                        </box>
-                      </Show>
-                    )
-                  })()}
-                </box>
+                  return (
+                    <Show when={retry()}>
+                      <box onMouseUp={handleMessageClick}>
+                        <text fg={theme.error}>{retryText()}</text>
+                      </box>
+                    </Show>
+                  )
+                })()}
               </box>
-              <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
-                esc{" "}
-                <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
-                  {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
-                </span>
-              </text>
             </box>
-          </Show>
-          <Show when={status().type !== "retry"}>
-            <box gap={2} flexDirection="row" paddingBottom={1}>
-              <Switch>
-                <Match when={store.mode === "normal"}>
-                  <text fg={theme.text}>
-                    {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>switch agent</span>
-                  </text>
-                  <text fg={theme.text}>
-                    {keybind.print("input_newline")} <span style={{ fg: theme.textMuted }}>newline</span>
-                  </text>
-                  <text fg={theme.text}>
-                    {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
-                  </text>
-                  <text fg={theme.text}>
-                    /usage <span style={{ fg: theme.textMuted }}>see usage</span>
-                  </text>
-                </Match>
-                <Match when={store.mode === "shell"}>
-                  <text fg={theme.text}>
-                    esc <span style={{ fg: theme.textMuted }}>exit shell mode</span>
-                  </text>
-                </Match>
-              </Switch>
-            </box>
-          </Show>
-        </box>
+            <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
+              esc{" "}
+              <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
+                {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
+              </span>
+            </text>
+          </box>
+        </Show>
       </box>
     </>
   )

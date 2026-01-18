@@ -1,20 +1,18 @@
+import type { AssistantMessage } from "@arctic-cli/sdk/v2"
 import { createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js"
-import { useTheme } from "../../context/theme"
-import { useSync } from "../../context/sync"
-import { useDirectory } from "../../context/directory"
-import { useConnected } from "../../component/dialog-model"
 import { createStore } from "solid-js/store"
-import { useRoute } from "../../context/route"
+import { useConnected } from "../../component/dialog-model"
+import { useDirectory } from "../../context/directory"
 import { useKeybind } from "../../context/keybind"
+import { useRoute } from "../../context/route"
+import { useSync } from "../../context/sync"
+import { useTheme } from "../../context/theme"
 
 export function Footer() {
   const { theme } = useTheme()
   const sync = useSync()
   const route = useRoute()
   const keybind = useKeybind()
-  const mcp = createMemo(() => Object.values(sync.data.mcp).filter((x) => x.status === "connected").length)
-  const mcpError = createMemo(() => Object.values(sync.data.mcp).some((x) => x.status === "failed"))
-  const lsp = createMemo(() => Object.keys(sync.data.lsp))
   const permissions = createMemo(() => {
     if (route.data.type !== "session") return []
     return sync.data.permission[route.data.sessionID] ?? []
@@ -23,11 +21,26 @@ export function Footer() {
     if (route.data.type !== "session") return undefined
     return sync.session.get(route.data.sessionID)
   })
+  const messages = createMemo(() => {
+    if (route.data.type !== "session") return []
+    return sync.data.message[route.data.sessionID] ?? []
+  })
+  const context = createMemo(() => {
+    const last = messages().findLast((x) => x.role === "assistant" && x.tokens.output > 0) as AssistantMessage
+    if (!last) return
+    const total =
+      last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write
+    const model = sync.data.provider.find((x) => x.id === last.providerID)?.models[last.modelID]
+    const limit = model?.limit.context
+    return {
+      tokens: total.toLocaleString(),
+      percentage: limit ? Math.round((total / limit) * 100) : null,
+    }
+  })
   const benchmarkLabel = createMemo(() => {
     const current = session()
     if (!current?.benchmark) return undefined
-    const parent =
-      current.benchmark.type === "parent" ? current : sync.session.get(current.benchmark.parentID)
+    const parent = current.benchmark.type === "parent" ? current : sync.session.get(current.benchmark.parentID)
     if (parent?.benchmark?.type !== "parent") return undefined
     const children = parent.benchmark.children
     if (!children.length) return "Benchmark: 0 slots"
@@ -40,8 +53,7 @@ export function Footer() {
   const benchmarkSwitchHint = createMemo(() => {
     const current = session()
     if (!current?.benchmark) return undefined
-    const parent =
-      current.benchmark.type === "parent" ? current : sync.session.get(current.benchmark.parentID)
+    const parent = current.benchmark.type === "parent" ? current : sync.session.get(current.benchmark.parentID)
     if (parent?.benchmark?.type !== "parent") return undefined
     if (parent.benchmark.children.length <= 1) return undefined
     return `Switch ${keybind.print("benchmark_prev")} / ${keybind.print("benchmark_next")}`
@@ -76,9 +88,15 @@ export function Footer() {
   })
 
   return (
-    <box flexDirection="row" justifyContent="space-between" gap={1} flexShrink={0}>
-      <text fg={theme.textMuted}>{directory()}</text>
-      <box gap={2} flexDirection="row" flexShrink={0}>
+    <box flexDirection="row" justifyContent="space-between" gap={1} flexShrink={0} paddingLeft={1}>
+      <box flexDirection="row" gap={1}>
+        <text fg={theme.textMuted}>{directory()}</text>
+        <Show when={sync.data.permission_bypass_enabled}>
+          <text fg={theme.textMuted}>·</text>
+          <text fg={theme.error}>⏵⏵ permission bypass enabled</text>
+        </Show>
+      </box>
+      <box gap={2} flexDirection="row" flexShrink={0} paddingRight={1}>
         <Switch>
           <Match when={store.welcome}>
             <text fg={theme.text}>
@@ -86,35 +104,21 @@ export function Footer() {
             </text>
           </Match>
           <Match when={connected()}>
+            <Show when={context()}>
+              {(ctx) => (
+                <text fg={theme.textMuted}>
+                  {ctx().tokens} tokens{ctx().percentage !== null ? ` (${ctx().percentage}%)` : ""}
+                </text>
+              )}
+            </Show>
             <Show when={permissions().length > 0}>
               <text fg={theme.warning}>
                 <span style={{ fg: theme.warning }}>◉</span> {permissions().length} Permission
                 {permissions().length > 1 ? "s" : ""}
               </text>
             </Show>
-            <Show when={benchmarkLabel()}>
-              {(label) => <text fg={theme.text}>{label()}</text>}
-            </Show>
-            <Show when={benchmarkSwitchHint()}>
-              {(hint) => <text fg={theme.textMuted}>{hint()}</text>}
-            </Show>
-            <text fg={theme.text}>
-              <span style={{ fg: theme.success }}>•</span> {lsp().length} LSP
-            </text>
-            <Show when={mcp()}>
-              <text fg={theme.text}>
-                <Switch>
-                  <Match when={mcpError()}>
-                    <span style={{ fg: theme.error }}>⊙ </span>
-                  </Match>
-                  <Match when={true}>
-                    <span style={{ fg: theme.success }}>⊙ </span>
-                  </Match>
-                </Switch>
-                {mcp()} MCP
-              </text>
-            </Show>
-            <text fg={theme.textMuted}>/status</text>
+            <Show when={benchmarkLabel()}>{(label) => <text fg={theme.text}>{label()}</text>}</Show>
+            <Show when={benchmarkSwitchHint()}>{(hint) => <text fg={theme.textMuted}>{hint()}</text>}</Show>
           </Match>
         </Switch>
       </box>

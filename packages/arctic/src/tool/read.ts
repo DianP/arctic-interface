@@ -32,30 +32,32 @@ export const ReadTool = Tool.define("read", {
 
     if (!ctx.extra?.["bypassCwdCheck"] && !Filesystem.contains(Instance.directory, filepath)) {
       const parentDir = path.dirname(filepath)
-      if (agent.permission.external_directory === "ask") {
-        await Permission.ask({
-          type: "external_directory",
-          pattern: [parentDir, path.join(parentDir, "*")],
-          sessionID: ctx.sessionID,
-          messageID: ctx.messageID,
-          callID: ctx.callID,
-          title: `Access file outside working directory: ${filepath}`,
-          metadata: {
-            filepath,
-            parentDir,
-          },
-        })
-      } else if (agent.permission.external_directory === "deny") {
-        throw new Permission.RejectedError(
-          ctx.sessionID,
-          "external_directory",
-          ctx.callID,
-          {
-            filepath: filepath,
-            parentDir,
-          },
-          `File ${filepath} is not in the current working directory`,
-        )
+      if (!(await Permission.isBypassEnabled())) {
+        if (agent.permission.external_directory === "ask") {
+          await Permission.ask({
+            type: "external_directory",
+            pattern: [parentDir, path.join(parentDir, "*")],
+            sessionID: ctx.sessionID,
+            messageID: ctx.messageID,
+            callID: ctx.callID,
+            title: `Access file outside working directory: ${filepath}`,
+            metadata: {
+              filepath,
+              parentDir,
+            },
+          })
+        } else if (agent.permission.external_directory === "deny") {
+          throw new Permission.RejectedError(
+            ctx.sessionID,
+            "external_directory",
+            ctx.callID,
+            {
+              filepath: filepath,
+              parentDir,
+            },
+            `File ${filepath} is not in the current working directory`,
+          )
+        }
       }
     }
 
