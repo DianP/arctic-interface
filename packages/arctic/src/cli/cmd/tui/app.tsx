@@ -612,6 +612,16 @@ function App() {
       category: "System",
     },
     {
+      title: "Open settings dashboard",
+      value: "settings.open",
+      onSelect: async (dialog) => {
+        const { Settings } = await import("@/settings/server")
+        await Settings.open_browser()
+        dialog.clear()
+      },
+      category: "System",
+    },
+    {
       title: "Toggle appearance",
       value: "theme.switch_mode",
       onSelect: (dialog) => {

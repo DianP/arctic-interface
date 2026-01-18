@@ -21,6 +21,9 @@ dist
 # Temp
 gitignore
 
+# Settings dashboard
+src/settings
+
 # System Files
 .DS_Store
 Thumbs.db

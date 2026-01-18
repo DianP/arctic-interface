@@ -1,12 +1,13 @@
 import { defineConfig } from "vite"
 import solidPlugin from "vite-plugin-solid"
 import { iconsSpritesheet } from "vite-plugin-icons-spritesheet"
-import fs from "fs"
+import path from "path"
+
+const isSettings = process.env.BUILD_TARGET === "settings"
 
 export default defineConfig({
   plugins: [
     solidPlugin(),
-    providerIconsPlugin(),
     iconsSpritesheet([
       {
         withTypes: true,
@@ -14,45 +15,22 @@ export default defineConfig({
         outputDir: "src/components/file-icons",
         formatter: "prettier",
       },
-      {
-        withTypes: true,
-        inputDir: "src/assets/icons/provider",
-        outputDir: "src/components/provider-icons",
-        formatter: "prettier",
-        iconNameTransformer: (iconName) => iconName,
-      },
     ]),
   ],
+  root: isSettings ? "src/settings" : undefined,
   server: { port: 3001 },
   build: {
     target: "esnext",
+    outDir: isSettings ? path.resolve(__dirname, "../arctic/ui-dist/settings") : "dist",
+    rollupOptions: isSettings
+      ? {
+          input: {
+            main: path.resolve(__dirname, "src/settings/index.html"),
+          },
+        }
+      : undefined,
   },
   worker: {
     format: "es",
   },
 })
-
-function providerIconsPlugin() {
-  return {
-    name: "provider-icons-plugin",
-    configureServer() {
-      fetchProviderIcons()
-    },
-    buildStart() {
-      fetchProviderIcons()
-    },
-  }
-}
-
-async function fetchProviderIcons() {
-  const providers = await fetch("https://models.dev/api.json")
-    .then((res) => res.json())
-    .then((json) => Object.keys(json))
-  await Promise.all(
-    providers.map((provider) =>
-      fetch(`https://models.dev/logos/${provider}.svg`)
-        .then((res) => res.text())
-        .then((svg) => fs.writeFileSync(`./src/assets/icons/provider/${provider}.svg`, svg)),
-    ),
-  )
-}
