@@ -23,6 +23,8 @@ import { SessionCommand } from "./cli/cmd/session"
 import { maybeImportClaudeAgents, maybeImportClaudeCommands, maybeImportClaudeMcp } from "./cli/claude-import"
 import { maybeImportExternalAuth } from "./cli/external-auth-import"
 import { maybeImportOpenCodeConfig } from "./cli/opencode-config-import"
+import { TelemetryCommand } from "./cli/cmd/telemetry"
+import { Telemetry } from "./telemetry"
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -100,6 +102,7 @@ const cli = yargs(hideBin(process.argv))
   .command(ExportCommand)
   .command(ImportCommand)
   .command(SessionCommand)
+  .command(TelemetryCommand)
   .fail((msg) => {
     if (
       msg.startsWith("Unknown argument") ||
@@ -152,6 +155,8 @@ try {
   }
   process.exitCode = 1
 } finally {
+  // flush telemetry before exit
+  await Telemetry.flush()
   // Some subprocesses don't react properly to SIGTERM and similar signals.
   // Most notably, some docker-container-based MCP servers don't handle such signals unless
   // run using `docker run --init`.

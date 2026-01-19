@@ -16,6 +16,7 @@ import { fn } from "@/util/fn"
 import { Command } from "../command"
 import { Snapshot } from "@/snapshot"
 import { BenchmarkSchema } from "./benchmark-schema"
+import { Telemetry } from "../telemetry"
 
 import type { Provider } from "@/provider/provider"
 
@@ -194,6 +195,7 @@ export namespace Session {
     Bus.publish(Event.Updated, {
       info: result,
     })
+    Telemetry.sessionStarted()
     return result
   }
 

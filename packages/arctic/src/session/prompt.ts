@@ -55,6 +55,7 @@ import { SessionProcessor } from "./processor"
 import { SessionStatus } from "./status"
 import { SessionSummary } from "./summary"
 import { SessionUsage } from "./usage"
+import { Telemetry } from "../telemetry"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -693,6 +694,7 @@ export namespace SessionPrompt {
           sessionID: sessionID,
           messageID: lastUser.id,
         })
+        Telemetry.messageSent(model.providerID, model.id)
       }
 
       // Deep copy message history so that modifications made by plugins do not
@@ -920,6 +922,7 @@ export namespace SessionPrompt {
         inputSchema: jsonSchema(schema as any),
         async execute(args, options) {
           const rawToolName = toolNameMap ? toolNameMap.reverse(toolId) : item.id
+          Telemetry.toolInvoked(rawToolName)
 
           await Plugin.trigger(
             "tool.execute.before",
@@ -987,6 +990,7 @@ export namespace SessionPrompt {
       // Wrap execute to add plugin hooks and format output
       item.execute = async (args, opts) => {
         const rawToolName = toolNameMap ? toolNameMap.reverse(toolKey) : key
+        Telemetry.toolInvoked(rawToolName)
         await Plugin.trigger(
           "tool.execute.before",
           {

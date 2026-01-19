@@ -81,6 +81,15 @@ arctic stats --view overview
 arctic stats --view models
 arctic stats --view cost
 arctic stats --json
+
+# Filter by date
+arctic stats --date today
+arctic stats --date yesterday
+arctic stats -d 2025-01-15
+
+# Filter by date range
+arctic stats --from 2025-01-01 --to 2025-01-15
+arctic stats --from 2025-01-01
 ```
 
 ![CLI Stats](/cli_stats.png)
@@ -89,6 +98,9 @@ arctic stats --json
 
 - `--view <all|overview|models|cost>`: Which section to display (default: all)
 - `--json`: Output raw stats as JSON
+- `--date, -d <date>`: Filter by specific date (`today`, `yesterday`, or `YYYY-MM-DD`)
+- `--from <date>`: Start date for range filter (`YYYY-MM-DD`)
+- `--to <date>`: End date for range filter (`YYYY-MM-DD`)
 
 **Output includes:**
 

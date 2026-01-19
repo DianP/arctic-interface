@@ -1394,26 +1394,27 @@ function UserMessage(props: {
               paddingLeft={1}
               paddingRight={1}
               backgroundColor={theme.backgroundElement}
-              alignSelf="flex-start"
               flexDirection="row"
             >
               <text fg={theme.textMuted}>{"> "}</text>
-              <Switch>
-                <Match when={ctx.userMessageMarkdown()}>
-                  <code
-                    filetype="markdown"
-                    drawUnstyledText={false}
-                    streaming={false}
-                    syntaxStyle={syntax()}
-                    content={formatUserText(text()?.text ?? "")}
-                    conceal={ctx.conceal()}
-                    fg={theme.textMuted}
-                  />
-                </Match>
-                <Match when={!ctx.userMessageMarkdown()}>
-                  <text fg={theme.textMuted}>{formatUserText(text()?.text ?? "")}</text>
-                </Match>
-              </Switch>
+              <box flexGrow={1} flexShrink={1}>
+                <Switch>
+                  <Match when={ctx.userMessageMarkdown()}>
+                    <code
+                      filetype="markdown"
+                      drawUnstyledText={false}
+                      streaming={false}
+                      syntaxStyle={syntax()}
+                      content={formatUserText(text()?.text ?? "")}
+                      conceal={ctx.conceal()}
+                      fg={theme.textMuted}
+                    />
+                  </Match>
+                  <Match when={!ctx.userMessageMarkdown()}>
+                    <text fg={theme.textMuted}>{formatUserText(text()?.text ?? "")}</text>
+                  </Match>
+                </Switch>
+              </box>
             </box>
             <Show when={files().length}>
               <box flexDirection="row" paddingBottom={1} paddingTop={1} gap={1} flexWrap="wrap">

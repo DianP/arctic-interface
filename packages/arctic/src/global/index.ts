@@ -25,6 +25,7 @@ export namespace Global {
 
   interface Settings {
     permissionBypassEnabled?: boolean
+    telemetryEnabled?: boolean
   }
 
   let settingsCache: Settings | undefined
@@ -54,6 +55,17 @@ export namespace Global {
   export async function setPermissionBypassEnabled(enabled: boolean): Promise<void> {
     const settings = await loadSettings()
     settings.permissionBypassEnabled = enabled
+    await saveSettings(settings)
+  }
+
+  export async function getTelemetryEnabled(): Promise<boolean> {
+    const settings = await loadSettings()
+    return settings.telemetryEnabled ?? true // enabled by default
+  }
+
+  export async function setTelemetryEnabled(enabled: boolean): Promise<void> {
+    const settings = await loadSettings()
+    settings.telemetryEnabled = enabled
     await saveSettings(settings)
   }
 }

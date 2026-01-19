@@ -73,10 +73,24 @@ export const StatsCommand = cmd({
         type: "boolean",
         default: false,
       })
+      .option("date", {
+        alias: "d",
+        describe: "filter by date (today, yesterday, or YYYY-MM-DD)",
+        type: "string",
+      })
+      .option("from", {
+        describe: "start date for range filter (YYYY-MM-DD)",
+        type: "string",
+      })
+      .option("to", {
+        describe: "end date for range filter (YYYY-MM-DD)",
+        type: "string",
+      })
   },
   handler: async (args) => {
     await bootstrap(process.cwd(), async () => {
-      const stats = await aggregateStats()
+      const dateFilter = parseDateFilter(args.date as string | undefined, args.from as string | undefined, args.to as string | undefined)
+      const stats = await aggregateStats(dateFilter)
 
       if (args.json) {
         console.log(JSON.stringify(stats, null, 2))
@@ -84,21 +98,85 @@ export const StatsCommand = cmd({
       }
 
       const view = args.view as "all" | "overview" | "models" | "cost"
-      displayStats(stats, view)
+      displayStats(stats, view, dateFilter)
     })
   },
 })
 
-function displayStats(stats: SessionStats, view: "all" | "overview" | "models" | "cost") {
+interface DateFilter {
+  from: Date
+  to: Date
+  label: string
+}
+
+function parseDateFilter(date?: string, from?: string, to?: string): DateFilter | undefined {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  if (date) {
+    if (date === "today") {
+      const end = new Date(today)
+      end.setHours(23, 59, 59, 999)
+      return { from: today, to: end, label: "today" }
+    }
+    if (date === "yesterday") {
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const end = new Date(yesterday)
+      end.setHours(23, 59, 59, 999)
+      return { from: yesterday, to: end, label: "yesterday" }
+    }
+    const parsed = new Date(date)
+    if (!isNaN(parsed.getTime())) {
+      parsed.setHours(0, 0, 0, 0)
+      const end = new Date(parsed)
+      end.setHours(23, 59, 59, 999)
+      return { from: parsed, to: end, label: date }
+    }
+    console.error(`Invalid date format: ${date}. Use "today", "yesterday", or YYYY-MM-DD`)
+    process.exit(1)
+  }
+
+  if (from || to) {
+    const fromDate = from ? new Date(from) : new Date(0)
+    const toDate = to ? new Date(to) : new Date()
+
+    if (from && isNaN(fromDate.getTime())) {
+      console.error(`Invalid from date: ${from}. Use YYYY-MM-DD format`)
+      process.exit(1)
+    }
+    if (to && isNaN(toDate.getTime())) {
+      console.error(`Invalid to date: ${to}. Use YYYY-MM-DD format`)
+      process.exit(1)
+    }
+
+    fromDate.setHours(0, 0, 0, 0)
+    toDate.setHours(23, 59, 59, 999)
+
+    const label = from && to ? `${from} to ${to}` : from ? `from ${from}` : `until ${to}`
+    return { from: fromDate, to: toDate, label }
+  }
+
+  return undefined
+}
+
+function displayStats(stats: SessionStats, view: "all" | "overview" | "models" | "cost", dateFilter?: DateFilter) {
   const daysToShow = calculateDaysToShow(stats)
   const favoriteModel = getFavoriteModel(stats)
   const tokenComparison = getTokenComparison(stats)
 
   console.log()
 
-  if (view === "all" || view === "overview") {
-    renderActivityHeatmap(stats.dailyActivity, daysToShow)
+  if (dateFilter) {
+    console.log(`${colors.bold}Showing stats for: ${colors.primary}${dateFilter.label}${colors.reset}`)
     console.log()
+  }
+
+  if (view === "all" || view === "overview") {
+    if (!dateFilter) {
+      renderActivityHeatmap(stats.dailyActivity, daysToShow)
+      console.log()
+    }
 
     // favorite model and total tokens row
     const favModelText = `${colors.bold}Favorite model:${colors.reset} ${colors.primary}${favoriteModel ?? "N/A"}${colors.reset}`
@@ -110,7 +188,7 @@ function displayStats(stats: SessionStats, view: "all" | "overview" | "models" |
     const col1 = [
       `${colors.bold}Sessions:${colors.reset} ${colors.primary}${stats.totalSessions}${colors.reset}`,
       `${colors.bold}Current streak:${colors.reset} ${colors.primary}${stats.currentStreak} days${colors.reset}`,
-      `${colors.bold}Active days:${colors.reset} ${colors.primary}${stats.activeDays}/${daysToShow}${colors.reset}`,
+      `${colors.bold}Active days:${colors.reset} ${colors.primary}${stats.activeDays}${dateFilter ? "" : `/${daysToShow}`}${colors.reset}`,
     ]
     const col2 = [
       `${colors.bold}Longest session:${colors.reset} ${colors.primary}${formatDuration(stats.longestSession)}${colors.reset}`,
@@ -127,8 +205,10 @@ function displayStats(stats: SessionStats, view: "all" | "overview" | "models" |
       console.log(`${colors.primary}You've used ~${tokenComparison}x more tokens than War and Peace${colors.reset}`)
     }
 
-    console.log()
-    console.log(`${colors.muted}Stats from the last ${daysToShow} days${colors.reset}`)
+    if (!dateFilter) {
+      console.log()
+      console.log(`${colors.muted}Stats from the last ${daysToShow} days${colors.reset}`)
+    }
     console.log()
   }
 
@@ -138,7 +218,7 @@ function displayStats(stats: SessionStats, view: "all" | "overview" | "models" |
   }
 
   if (view === "all" || view === "cost") {
-    renderCostOverview(stats, daysToShow)
+    renderCostOverview(stats, daysToShow, dateFilter)
     console.log()
   }
 }
@@ -269,7 +349,7 @@ function renderModelUsage(modelUsage: Record<string, { count: number; tokens: nu
   }
 }
 
-function renderCostOverview(stats: SessionStats, daysToShow: number) {
+function renderCostOverview(stats: SessionStats, daysToShow: number, dateFilter?: DateFilter) {
   console.log(`${colors.bold}Cost Summary${colors.reset}`)
   console.log()
 
@@ -281,7 +361,7 @@ function renderCostOverview(stats: SessionStats, daysToShow: number) {
   ]
   const col2 = [
     `${colors.bold}Sessions:${colors.reset} ${colors.primary}${stats.totalSessions}${colors.reset}`,
-    `${colors.bold}Active days:${colors.reset} ${colors.primary}${stats.activeDays}/${daysToShow}${colors.reset}`,
+    `${colors.bold}Active days:${colors.reset} ${colors.primary}${stats.activeDays}${dateFilter ? "" : `/${daysToShow}`}${colors.reset}`,
     "",
   ]
 
@@ -331,8 +411,10 @@ function renderCostOverview(stats: SessionStats, daysToShow: number) {
     )
   }
 
-  console.log()
-  console.log(`${colors.muted}Stats from the last ${daysToShow} days${colors.reset}`)
+  if (!dateFilter) {
+    console.log()
+    console.log(`${colors.muted}Stats from the last ${daysToShow} days${colors.reset}`)
+  }
 }
 
 function calculateDaysToShow(stats: SessionStats): number {
@@ -355,8 +437,16 @@ function getTokenComparison(stats: SessionStats): number | undefined {
   return Math.round(multiple)
 }
 
-async function aggregateStats(): Promise<SessionStats> {
-  const sessions = await getAllSessions()
+async function aggregateStats(dateFilter?: DateFilter): Promise<SessionStats> {
+  const allSessions = await getAllSessions()
+
+  // filter sessions by date if filter is provided
+  const sessions = dateFilter
+    ? allSessions.filter((session) => {
+        const created = new Date(session.time.created)
+        return created >= dateFilter.from && created <= dateFilter.to
+      })
+    : allSessions
 
   const stats: SessionStats = {
     totalSessions: sessions.length,

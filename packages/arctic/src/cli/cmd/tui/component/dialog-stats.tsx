@@ -39,15 +39,59 @@ interface SessionStats {
 
 const WAR_AND_PEACE_TOKENS = 730000
 
+type DateFilterType = "all" | "today" | "yesterday" | "7days" | "30days"
+
+interface DateFilter {
+  type: DateFilterType
+  from: Date
+  to: Date
+  label: string
+}
+
+function getDateFilter(type: DateFilterType): DateFilter {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const endOfToday = new Date(today)
+  endOfToday.setHours(23, 59, 59, 999)
+
+  switch (type) {
+    case "today":
+      return { type, from: today, to: endOfToday, label: "Today" }
+    case "yesterday": {
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const endOfYesterday = new Date(yesterday)
+      endOfYesterday.setHours(23, 59, 59, 999)
+      return { type, from: yesterday, to: endOfYesterday, label: "Yesterday" }
+    }
+    case "7days": {
+      const weekAgo = new Date(today)
+      weekAgo.setDate(weekAgo.getDate() - 6)
+      return { type, from: weekAgo, to: endOfToday, label: "Last 7 days" }
+    }
+    case "30days": {
+      const monthAgo = new Date(today)
+      monthAgo.setDate(monthAgo.getDate() - 29)
+      return { type, from: monthAgo, to: endOfToday, label: "Last 30 days" }
+    }
+    default:
+      return { type: "all", from: new Date(0), to: endOfToday, label: "All time" }
+  }
+}
+
 export function DialogStats() {
   const { theme } = useTheme()
   const dialog = useDialog()
   const dimensions = useTerminalDimensions()
   const [tab, setTab] = createSignal<"overview" | "models" | "cost">("overview")
+  const [dateFilterType, setDateFilterType] = createSignal<DateFilterType>("all")
 
   let scroll: ScrollBoxRenderable
 
   const tabs: Array<"overview" | "models" | "cost"> = ["overview", "models", "cost"]
+  const dateFilters: DateFilterType[] = ["all", "today", "yesterday", "7days", "30days"]
+
+  const dateFilter = createMemo(() => getDateFilter(dateFilterType()))
 
   useKeyboard((evt) => {
     if (evt.name === "tab" && !evt.ctrl && !evt.meta) {
@@ -57,6 +101,20 @@ export function DialogStats() {
         ? (currentIndex - 1 + tabs.length) % tabs.length
         : (currentIndex + 1) % tabs.length
       setTab(tabs[nextIndex])
+      return
+    }
+    if (evt.name === "left" || evt.name === "h") {
+      evt.preventDefault()
+      const currentIndex = dateFilters.indexOf(dateFilterType())
+      const nextIndex = (currentIndex - 1 + dateFilters.length) % dateFilters.length
+      setDateFilterType(dateFilters[nextIndex])
+      return
+    }
+    if (evt.name === "right" || evt.name === "l") {
+      evt.preventDefault()
+      const currentIndex = dateFilters.indexOf(dateFilterType())
+      const nextIndex = (currentIndex + 1) % dateFilters.length
+      setDateFilterType(dateFilters[nextIndex])
       return
     }
     if (evt.name === "up" || (evt.ctrl && evt.name === "p")) {
@@ -75,8 +133,8 @@ export function DialogStats() {
     dialog.setSize("xlarge")
   })
 
-  const [stats] = createResource(async () => {
-    return aggregateStats()
+  const [stats] = createResource(dateFilter, async (filter) => {
+    return aggregateStats(filter.type === "all" ? undefined : filter)
   })
 
   const favoriteModel = createMemo(() => {
@@ -107,6 +165,8 @@ export function DialogStats() {
     const diff = Math.ceil((Date.now() - earliest) / (24 * 60 * 60 * 1000))
     return Math.max(diff, 90)
   })
+
+  const isFiltered = createMemo(() => dateFilterType() !== "all")
 
   return (
     <box paddingLeft={2} paddingRight={2} paddingBottom={1}>
@@ -153,8 +213,33 @@ export function DialogStats() {
           </box>
           <text fg={theme.textMuted}>(tab to cycle)</text>
         </box>
-        <text fg={theme.textMuted}>esc to cancel</text>
+        <box flexDirection="row" gap={2}>
+          <box flexDirection="row">
+            <text fg={theme.textMuted}>◀ </text>
+            <For each={dateFilters}>
+              {(filter) => (
+                <box
+                  paddingLeft={1}
+                  paddingRight={1}
+                  backgroundColor={dateFilterType() === filter ? theme.accent : undefined}
+                  onMouseUp={() => setDateFilterType(filter)}
+                >
+                  <text
+                    fg={dateFilterType() === filter ? "#ffffff" : theme.textMuted}
+                    attributes={dateFilterType() === filter ? TextAttributes.BOLD : undefined}
+                  >
+                    {getDateFilter(filter).label}
+                  </text>
+                </box>
+              )}
+            </For>
+            <text fg={theme.textMuted}> ▶</text>
+          </box>
+        </box>
       </box>
+      <text fg={theme.textMuted} paddingBottom={1}>
+        ←/→ change date filter · esc to close
+      </text>
 
       <Show when={stats.loading}>
         <text fg={theme.textMuted}>Loading stats...</text>
@@ -163,7 +248,9 @@ export function DialogStats() {
       <Show when={stats() && tab() === "overview"}>
         <scrollbox ref={(r: ScrollBoxRenderable) => (scroll = r)} height={height()} scrollbarOptions={{ visible: false }}>
           <box gap={1}>
-            <ActivityHeatmap dailyActivity={stats()!.dailyActivity} days={daysToShow()} />
+            <Show when={!isFiltered()}>
+              <ActivityHeatmap dailyActivity={stats()!.dailyActivity} days={daysToShow()} />
+            </Show>
 
             <box flexDirection="row" gap={4}>
               <box>
@@ -185,14 +272,16 @@ export function DialogStats() {
                 <text fg={theme.text}>
                   <b>Sessions:</b> <span style={{ fg: theme.primary }}>{stats()!.totalSessions}</span>
                 </text>
-                <text fg={theme.text}>
-                  <b>Current streak:</b>{" "}
-                  <span style={{ fg: theme.primary }}>{stats()!.currentStreak} days</span>
-                </text>
+                <Show when={!isFiltered()}>
+                  <text fg={theme.text}>
+                    <b>Current streak:</b>{" "}
+                    <span style={{ fg: theme.primary }}>{stats()!.currentStreak} days</span>
+                  </text>
+                </Show>
                 <text fg={theme.text}>
                   <b>Active days:</b>{" "}
                   <span style={{ fg: theme.primary }}>
-                    {stats()!.activeDays}/{daysToShow()}
+                    {stats()!.activeDays}{!isFiltered() && `/${daysToShow()}`}
                   </span>
                 </text>
               </box>
@@ -201,10 +290,12 @@ export function DialogStats() {
                   <b>Longest session:</b>{" "}
                   <span style={{ fg: theme.primary }}>{formatDuration(stats()!.longestSession)}</span>
                 </text>
-                <text fg={theme.text}>
-                  <b>Longest streak:</b>{" "}
-                  <span style={{ fg: theme.primary }}>{stats()!.longestStreak} days</span>
-                </text>
+                <Show when={!isFiltered()}>
+                  <text fg={theme.text}>
+                    <b>Longest streak:</b>{" "}
+                    <span style={{ fg: theme.primary }}>{stats()!.longestStreak} days</span>
+                  </text>
+                </Show>
                 <text fg={theme.text}>
                   <b>Peak hour:</b>{" "}
                   <span style={{ fg: theme.primary }}>{formatHourRange(stats()!.peakHour)}</span>
@@ -218,7 +309,9 @@ export function DialogStats() {
               </text>
             </Show>
 
-            <text fg={theme.textMuted}>Stats from the last {daysToShow()} days</text>
+            <Show when={!isFiltered()}>
+              <text fg={theme.textMuted}>Stats from the last {daysToShow()} days</text>
+            </Show>
           </box>
         </scrollbox>
       </Show>
@@ -237,7 +330,7 @@ export function DialogStats() {
       <Show when={stats() && tab() === "cost"}>
         <scrollbox ref={(r: ScrollBoxRenderable) => (scroll = r)} height={height()} scrollbarOptions={{ visible: false }}>
           <box gap={1}>
-            <CostOverview stats={stats()!} daysToShow={daysToShow()} />
+            <CostOverview stats={stats()!} daysToShow={daysToShow()} isFiltered={isFiltered()} />
           </box>
         </scrollbox>
       </Show>
@@ -426,7 +519,7 @@ function ModelUsageList(props: { modelUsage: Record<string, { count: number; tok
   )
 }
 
-function CostOverview(props: { stats: SessionStats; daysToShow: number }) {
+function CostOverview(props: { stats: SessionStats; daysToShow: number; isFiltered: boolean }) {
   const { theme } = useTheme()
 
   const topModelsByCost = createMemo(() => {
@@ -468,7 +561,9 @@ function CostOverview(props: { stats: SessionStats; daysToShow: number }) {
           </text>
           <text fg={theme.text}>
             <b>Active days:</b>{" "}
-            <span style={{ fg: theme.primary }}>{props.stats.activeDays}/{props.daysToShow}</span>
+            <span style={{ fg: theme.primary }}>
+              {props.stats.activeDays}{!props.isFiltered && `/${props.daysToShow}`}
+            </span>
           </text>
         </box>
       </box>
@@ -531,15 +626,24 @@ function CostOverview(props: { stats: SessionStats; daysToShow: number }) {
         </Show>
       </box>
 
-      <text fg={theme.textMuted} paddingTop={1}>
-        Stats from the last {props.daysToShow} days
-      </text>
+      <Show when={!props.isFiltered}>
+        <text fg={theme.textMuted} paddingTop={1}>
+          Stats from the last {props.daysToShow} days
+        </text>
+      </Show>
     </box>
   )
 }
 
-async function aggregateStats(): Promise<SessionStats> {
-  const sessions = await getAllSessions()
+async function aggregateStats(dateFilter?: DateFilter): Promise<SessionStats> {
+  const allSessions = await getAllSessions()
+
+  const sessions = dateFilter
+    ? allSessions.filter((session) => {
+        const created = new Date(session.time.created)
+        return created >= dateFilter.from && created <= dateFilter.to
+      })
+    : allSessions
 
   const stats: SessionStats = {
     totalSessions: sessions.length,

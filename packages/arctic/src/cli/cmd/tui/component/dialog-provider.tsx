@@ -55,11 +55,7 @@ async function checkExistingConnection(
   const existingLabel = getConnectionLabel(connections[0].info)
 
   dialog.replace(() => (
-    <ExistingConnectionDialog
-      providerID={providerID}
-      existingLabel={existingLabel}
-      onContinue={onContinue}
-    />
+    <ExistingConnectionDialog providerID={providerID} existingLabel={existingLabel} onContinue={onContinue} />
   ))
 }
 
@@ -70,7 +66,6 @@ interface ExistingConnectionDialogProps {
 }
 
 function ExistingConnectionDialog(props: ExistingConnectionDialogProps) {
-  const { theme } = useTheme()
   const dialog = useDialog()
 
   const options = createMemo(() => [
@@ -79,10 +74,7 @@ function ExistingConnectionDialog(props: ExistingConnectionDialogProps) {
       value: "add",
       onSelect: () => {
         dialog.replace(() => (
-          <ConnectionNamePrompt
-            providerID={props.providerID}
-            onConfirm={(name) => props.onContinue(name)}
-          />
+          <ConnectionNamePrompt providerID={props.providerID} onConfirm={(name) => props.onContinue(name)} />
         ))
       },
     },
@@ -116,12 +108,7 @@ function ExistingConnectionDialog(props: ExistingConnectionDialogProps) {
     },
   ])
 
-  return (
-    <DialogSelect
-      title={`You already have a connection for ${props.providerID}`}
-      options={options()}
-    />
-  )
+  return <DialogSelect title={`You already have a connection for ${props.providerID}`} options={options()} />
 }
 
 interface ConnectionNamePromptProps {
@@ -157,7 +144,6 @@ function ConnectionNamePrompt(props: ConnectionNamePromptProps) {
     />
   )
 }
-
 
 export function createDialogProviderOptions() {
   const sync = useSync()
@@ -238,12 +224,18 @@ export function createDialogProviderOptions() {
             }
             if (method.type === "api") {
               if (provider.id === "ollama") {
-                return dialog.replace(() => <OllamaMethod providerID={provider.id} title={method.label} connectionName={connectionName} />)
+                return dialog.replace(() => (
+                  <OllamaMethod providerID={provider.id} title={method.label} connectionName={connectionName} />
+                ))
               }
               if (provider.id === "minimax-coding-plan" || provider.id === "minimax") {
-                return dialog.replace(() => <MinimaxMethod providerID={provider.id} title={method.label} connectionName={connectionName} />)
+                return dialog.replace(() => (
+                  <MinimaxMethod providerID={provider.id} title={method.label} connectionName={connectionName} />
+                ))
               }
-              return dialog.replace(() => <ApiMethod providerID={provider.id} title={method.label} connectionName={connectionName} />)
+              return dialog.replace(() => (
+                <ApiMethod providerID={provider.id} title={method.label} connectionName={connectionName} />
+              ))
             }
           }
 
@@ -301,7 +293,11 @@ function AutoMethod(props: AutoMethodProps) {
 
     await sdk.client.instance.dispose()
     await sync.bootstrap()
-    dialog.replace(() => <DialogModel providerID={props.connectionName ? Auth.formatKey(props.providerID, props.connectionName) : props.providerID} />)
+    dialog.replace(() => (
+      <DialogModel
+        providerID={props.connectionName ? Auth.formatKey(props.providerID, props.connectionName) : props.providerID}
+      />
+    ))
   })
 
   return (
@@ -366,7 +362,13 @@ function CodeMethod(props: CodeMethodProps) {
 
           await sdk.client.instance.dispose()
           await sync.bootstrap()
-          dialog.replace(() => <DialogModel providerID={props.connectionName ? Auth.formatKey(props.providerID, props.connectionName) : props.providerID} />)
+          dialog.replace(() => (
+            <DialogModel
+              providerID={
+                props.connectionName ? Auth.formatKey(props.providerID, props.connectionName) : props.providerID
+              }
+            />
+          ))
           return
         }
         setError(true)
@@ -405,7 +407,9 @@ function ApiMethod(props: ApiMethodProps) {
       description={undefined}
       onConfirm={async (value) => {
         if (!value) return
-        const targetKey = props.connectionName ? Auth.formatKey(props.providerID, props.connectionName) : props.providerID
+        const targetKey = props.connectionName
+          ? Auth.formatKey(props.providerID, props.connectionName)
+          : props.providerID
         await sdk.client.auth.set({
           providerID: targetKey,
           auth: {
@@ -475,7 +479,9 @@ function OllamaPortStep(props: OllamaPortStepProps) {
           setError("Invalid port number")
           return
         }
-        dialog.replace(() => <OllamaConnectingStep host={props.host} port={portNum} connectionName={props.connectionName} />)
+        dialog.replace(() => (
+          <OllamaConnectingStep host={props.host} port={portNum} connectionName={props.connectionName} />
+        ))
       }}
     />
   )
@@ -580,7 +586,9 @@ function MinimaxMethod(props: MinimaxMethodProps) {
       )}
       onConfirm={(value) => {
         if (!value) return
-        dialog.replace(() => <MinimaxGroupIdStep providerID={props.providerID} apiKey={value} connectionName={props.connectionName} />)
+        dialog.replace(() => (
+          <MinimaxGroupIdStep providerID={props.providerID} apiKey={value} connectionName={props.connectionName} />
+        ))
       }}
     />
   )
@@ -615,7 +623,9 @@ function MinimaxGroupIdStep(props: MinimaxGroupIdStepProps) {
         if (groupId && groupId.trim()) {
           auth.groupId = groupId.trim()
         }
-        const targetKey = props.connectionName ? Auth.formatKey(props.providerID, props.connectionName) : props.providerID
+        const targetKey = props.connectionName
+          ? Auth.formatKey(props.providerID, props.connectionName)
+          : props.providerID
         await sdk.client.auth.set({
           providerID: targetKey,
           auth,
