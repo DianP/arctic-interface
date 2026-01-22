@@ -66,6 +66,7 @@
     "@arctic-cli/sdk": "workspace:*",
     "@aws-sdk/client-s3": "3.933.0",
     "@types/node": "22.13.9",
+    "google-auth-library": "10.5.0",
     "ink": "6.6.0",
     "os": "0.1.2",
     "path": "0.12.7",

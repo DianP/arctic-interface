@@ -254,6 +254,7 @@ export namespace MCP {
           stderr: "ignore",
           command: cmd,
           args,
+          cwd: Instance.directory,
           env: {
             ...process.env,
             ...(cmd === "arctic" ? { BUN_BE_BUN: "1" } : {}),
