@@ -5,21 +5,37 @@ description: Install Arctic and get running in a few minutes.
 
 ## Installation
 
-Arctic is distributed as a standalone binary. Install it using the install script:
+### Shell (macOS/Linux)
 
 ```bash
 curl -fsSL https://usearctic.sh/install | bash
 ```
 
-Or download directly from the releases page:
+### PowerShell (Windows)
 
+```powershell
+irm https://usearctic.sh/install.ps1 | iex
 ```
-https://github.com/arctic-cli/interface/releases
+
+### Package Managers
+
+```bash
+# bun
+bun add -g @anthropic-cli/arctic
+
+# npm
+npm install -g @arctic-cli/arctic
+
+# pnpm
+pnpm add -g @arctic-cli/arctic
+
+# yarn
+yarn global add @arctic-cli/arctic
 ```
 
 ### System Requirements
 
-- **Linux** (x64, ARM64) or **macOS** (Intel, Apple Silicon)
+- **Windows** (x64), **Linux** (x64, ARM64), or **macOS** (Intel, Apple Silicon)
 - Git (recommended for snapshots)
 - Terminal with 256 color support
 - **Linux only**: `xclip` for clipboard support (`sudo apt install xclip`)
@@ -136,10 +152,10 @@ Arctic stores data in standard locations:
 ## Next Steps
 
 <Cards>
-  <Card title="TUI Guide" href="/docs/tui" description="Keyboard‑first workflow" />
-  <Card title="CLI Commands" href="/docs/cli/commands" description="Run prompts and manage sessions" />
+  <Card title="TUI" href="/docs/tui" description="Keyboard-first workflow" />
+  <Card title="CLI Commands" href="/docs/commands" description="Run prompts and manage sessions" />
   <Card title="Providers" href="/docs/providers" description="Auth and provider setup" />
-  <Card title="Config" href="/docs/cli/config" description="Customize Arctic" />
+  <Card title="Config" href="/docs/config" description="Customize Arctic" />
 </Cards>
 
 ## Troubleshooting
