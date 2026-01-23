@@ -21,6 +21,7 @@ import { Plugin } from "../plugin"
 import { WebSearchTool } from "./websearch"
 import { CodeSearchTool } from "./codesearch"
 import { Flag } from "@/flag/flag"
+import { SkillUseTool, SkillFindTool } from "@/skill/tools"
 
 export namespace ToolRegistry {
   export const state = Instance.state(async () => {
@@ -99,6 +100,8 @@ export namespace ToolRegistry {
       TodoReadTool,
       WebSearchTool,
       CodeSearchTool,
+      SkillUseTool,
+      SkillFindTool,
       ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
       ...custom,
     ]

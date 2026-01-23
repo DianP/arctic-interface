@@ -13,7 +13,6 @@ import path from "path"
 import z from "zod"
 import { Session } from "."
 import { Agent } from "../agent/agent"
-import { Auth } from "../auth"
 import { Bus } from "../bus"
 import { Flag } from "../flag/flag"
 import { Identifier } from "../id/id"
@@ -232,16 +231,6 @@ export namespace SessionPrompt {
     return loop(input.sessionID)
   }
 
-  async function resolveAnthropicOauthToolNameMap(providerID: string) {
-    if (providerID !== "anthropic") return undefined
-    const auth = await Auth.get(providerID)
-    if (!auth || auth.type !== "oauth") return undefined
-
-    return {
-      forward: (name: string) => ProviderTransform.anthropicOauthToolName(name),
-      reverse: (name: string) => ProviderTransform.anthropicOauthToolNameReverse(name),
-    }
-  }
 
   async function benchmarkFanout(parent: Session.Info, input: PromptInput) {
     if (!SessionBenchmark.isParent(parent)) {
@@ -621,7 +610,6 @@ export namespace SessionPrompt {
         messages: msgs,
         agent,
       })
-      const toolNameMap = await resolveAnthropicOauthToolNameMap(model.providerID)
       const processor = SessionProcessor.create({
         assistantMessage: (await Session.updateMessage({
           id: Identifier.ascending("message"),
@@ -649,7 +637,6 @@ export namespace SessionPrompt {
         sessionID: sessionID,
         model,
         abort,
-        toolNameResolver: toolNameMap?.reverse,
       })
       const system = await resolveSystemPrompt({
         model,
@@ -663,7 +650,6 @@ export namespace SessionPrompt {
         model,
         tools: lastUser.tools,
         processor,
-        toolNameMap,
       })
       const provider = await Provider.getProvider(model.providerID)
       const params = await Plugin.trigger(
@@ -753,26 +739,13 @@ export namespace SessionPrompt {
               toolName: lower,
             }
           }
-          if (toolNameMap) {
-            const mapped = toolNameMap.forward(lower)
-            if (tools[mapped]) {
-              log.info("repairing tool call", {
-                tool: input.toolCall.toolName,
-                repaired: mapped,
-              })
-              return {
-                ...input.toolCall,
-                toolName: mapped,
-              }
-            }
-          }
           return {
             ...input.toolCall,
             input: JSON.stringify({
               tool: input.toolCall.toolName,
               error: input.error.message,
             }),
-            toolName: toolNameMap ? toolNameMap.forward("invalid") : "invalid",
+            toolName: "invalid",
           }
         },
         headers: {
@@ -788,9 +761,7 @@ export namespace SessionPrompt {
         },
         // set to 0, we handle loop
         maxRetries: 0,
-        activeTools: Object.keys(tools)
-          .filter((x) => x !== "invalid")
-          .map((name) => (toolNameMap ? toolNameMap.forward(name) : name)),
+        activeTools: Object.keys(tools).filter((x) => x !== "invalid"),
         maxOutputTokens: ProviderTransform.maxOutputTokens(
           model.api.npm,
           params.options,
@@ -899,10 +870,6 @@ export namespace SessionPrompt {
     sessionID: string
     tools?: Record<string, boolean>
     processor: SessionProcessor.Info
-    toolNameMap?: {
-      forward: (name: string) => string
-      reverse: (name: string) => string
-    }
   }) {
     const tools: Record<string, AITool> = {}
     const enabledTools = pipe(
@@ -910,19 +877,16 @@ export namespace SessionPrompt {
       mergeDeep(await ToolRegistry.enabled(input.agent)),
       mergeDeep(input.tools ?? {}),
     )
-    const toolNameMap = input.toolNameMap ?? (await resolveAnthropicOauthToolNameMap(input.model.providerID))
-    const toolNameResolver = toolNameMap?.forward
     for (const item of await ToolRegistry.tools(input.model.providerID)) {
       if (Wildcard.all(item.id, enabledTools) === false) continue
-      if (toolNameMap && !ProviderTransform.anthropicOauthToolRenamed(item.id)) continue
       const schema = ProviderTransform.schema(input.model, z.toJSONSchema(item.parameters))
-      const toolId = toolNameResolver ? toolNameResolver(item.id) : item.id
+      const toolId = item.id
       tools[toolId] = tool({
         id: toolId as any,
         description: item.description,
         inputSchema: jsonSchema(schema as any),
         async execute(args, options) {
-          const rawToolName = toolNameMap ? toolNameMap.reverse(toolId) : item.id
+          const rawToolName = item.id
           Telemetry.toolInvoked(rawToolName)
 
           await Plugin.trigger(
@@ -985,12 +949,11 @@ export namespace SessionPrompt {
       if (Wildcard.all(key, enabledTools) === false) continue
       const execute = item.execute
       if (!execute) continue
-      if (toolNameMap && !ProviderTransform.anthropicOauthToolRenamed(key)) continue
-      const toolKey = toolNameResolver ? toolNameResolver(key) : key
+      const toolKey = key
 
       // Wrap execute to add plugin hooks and format output
       item.execute = async (args, opts) => {
-        const rawToolName = toolNameMap ? toolNameMap.reverse(toolKey) : key
+        const rawToolName = key
         Telemetry.toolInvoked(rawToolName)
         await Plugin.trigger(
           "tool.execute.before",

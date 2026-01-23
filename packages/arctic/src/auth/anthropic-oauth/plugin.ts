@@ -1,6 +1,8 @@
 import type { Plugin, PluginInput } from "@arctic-cli/plugin"
 import { openBrowserUrl } from "../codex-oauth/auth/browser"
 
+const CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+
 export const ArcticAnthropicAuth: Plugin = async (input: PluginInput) => {
   return {
     auth: {
@@ -29,55 +31,184 @@ export const ArcticAnthropicAuth: Plugin = async (input: PluginInput) => {
 
               // Check if token needs refresh
               if (!currentAuth.access || currentAuth.expires < Date.now()) {
-                const { refreshAccessToken } = await import("./token")
-                const result = await refreshAccessToken(currentAuth.refresh)
-
-                if (result.type === "failed") {
-                  throw new Error("Token refresh failed")
-                }
-
-                // Update auth with new tokens
-                const { Auth } = await import("@/auth")
-                await Auth.set("anthropic", {
-                  type: "oauth",
-                  access: result.access!,
-                  refresh: result.refresh!,
-                  expires: result.expires!,
+                const response = await fetch("https://console.anthropic.com/v1/oauth/token", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    grant_type: "refresh_token",
+                    refresh_token: currentAuth.refresh,
+                    client_id: CLIENT_ID,
+                  }),
                 })
+                if (!response.ok) {
+                  throw new Error(`Token refresh failed: ${response.status}`)
+                }
+                const json = await response.json()
+                await input.client.auth.set({
+                  path: {
+                    id: "anthropic",
+                  },
+                  body: {
+                    type: "oauth",
+                    refresh: json.refresh_token,
+                    access: json.access_token,
+                    expires: Date.now() + json.expires_in * 1000,
+                  },
+                })
+                currentAuth.access = json.access_token
+              }
 
-                currentAuth.access = result.access!
+              const requestInit = init ?? {}
+              const requestHeaders = new Headers()
+
+              if (url instanceof Request) {
+                url.headers.forEach((value, key) => {
+                  requestHeaders.set(key, value)
+                })
+              }
+
+              if (requestInit.headers) {
+                if (requestInit.headers instanceof Headers) {
+                  requestInit.headers.forEach((value, key) => {
+                    requestHeaders.set(key, value)
+                  })
+                } else if (Array.isArray(requestInit.headers)) {
+                  for (const [key, value] of requestInit.headers) {
+                    if (typeof value !== "undefined") {
+                      requestHeaders.set(key, String(value))
+                    }
+                  }
+                } else {
+                  for (const [key, value] of Object.entries(requestInit.headers)) {
+                    if (typeof value !== "undefined") {
+                      requestHeaders.set(key, String(value))
+                    }
+                  }
+                }
               }
 
               // Add OAuth headers
-              const incomingHeaders = init?.headers as Record<string, string> | undefined
-              const incomingBeta = incomingHeaders?.["anthropic-beta"] || ""
+              const incomingBeta = requestHeaders.get("anthropic-beta") || ""
               const incomingBetasList = incomingBeta
                 .split(",")
                 .map((b: string) => b.trim())
                 .filter(Boolean)
 
-              // Add oauth beta and deduplicate
+              const includeClaudeCode = incomingBetasList.includes("claude-code-20250219")
+
               const mergedBetas = [
-                ...new Set([
-                  "oauth-2025-04-20",
-                  "claude-code-20250219",
-                  "interleaved-thinking-2025-05-14",
-                  "fine-grained-tool-streaming-2025-05-14",
-                  ...incomingBetasList,
-                ]),
+                "oauth-2025-04-20",
+                "interleaved-thinking-2025-05-14",
+                ...(includeClaudeCode ? ["claude-code-20250219"] : []),
               ].join(",")
 
-              const requestHeaders = {
-                ...init?.headers,
-                authorization: `Bearer ${currentAuth.access}`,
-                "anthropic-beta": mergedBetas,
-              }
-              delete (requestHeaders as any)["x-api-key"]
+              requestHeaders.set("authorization", `Bearer ${currentAuth.access}`)
+              requestHeaders.set("anthropic-beta", mergedBetas)
+              requestHeaders.set("user-agent", "claude-cli/2.1.2 (external, cli)")
+              requestHeaders.delete("x-api-key")
 
-              return fetch(url, {
-                ...init,
+              const TOOL_PREFIX = "mcp_"
+              let body = requestInit.body
+              if (body && typeof body === "string") {
+                try {
+                  const parsed = JSON.parse(body)
+
+                  // Sanitize system prompt - server blocks "OpenCode" string
+                  if (parsed.system && Array.isArray(parsed.system)) {
+                    parsed.system = parsed.system.map((item: any) => {
+                      if (item.type === "text" && item.text) {
+                        return {
+                          ...item,
+                          text: item.text
+                            .replace(/OpenCode/g, "Claude Code")
+                            .replace(/opencode/gi, "Claude"),
+                        }
+                      }
+                      return item
+                    })
+                  }
+
+                  // Add prefix to tools definitions
+                  if (parsed.tools && Array.isArray(parsed.tools)) {
+                    parsed.tools = parsed.tools.map((tool: any) => ({
+                      ...tool,
+                      name: tool.name ? `${TOOL_PREFIX}${tool.name}` : tool.name,
+                    }))
+                  }
+
+                  // Add prefix to tool_use blocks in messages
+                  if (parsed.messages && Array.isArray(parsed.messages)) {
+                    parsed.messages = parsed.messages.map((msg: any) => {
+                      if (msg.content && Array.isArray(msg.content)) {
+                        msg.content = msg.content.map((block: any) => {
+                          if (block.type === "tool_use" && block.name) {
+                            return { ...block, name: `${TOOL_PREFIX}${block.name}` }
+                          }
+                          return block
+                        })
+                      }
+                      return msg
+                    })
+                  }
+                  body = JSON.stringify(parsed)
+                } catch (error) {
+                  // ignore parse errors
+                }
+              }
+
+              let requestInput: string | URL | Request = url
+              let requestUrl: URL | null = null
+              try {
+                if (typeof url === "string" || url instanceof URL) {
+                  requestUrl = new URL(url.toString())
+                } else if (url instanceof Request) {
+                  requestUrl = new URL(url.url)
+                }
+              } catch {
+                requestUrl = null
+              }
+
+              if (requestUrl && requestUrl.pathname === "/v1/messages" && !requestUrl.searchParams.has("beta")) {
+                requestUrl.searchParams.set("beta", "true")
+                requestInput = url instanceof Request ? new Request(requestUrl.toString(), url) : requestUrl
+              }
+
+              const response = await fetch(requestInput, {
+                ...requestInit,
+                body,
                 headers: requestHeaders,
               })
+
+              // Transform streaming response to rename tools back
+              if (response.body) {
+                const reader = response.body.getReader()
+                const decoder = new TextDecoder()
+                const encoder = new TextEncoder()
+
+                const stream = new ReadableStream({
+                  async pull(controller) {
+                    const { done, value } = await reader.read()
+                    if (done) {
+                      controller.close()
+                      return
+                    }
+
+                    let text = decoder.decode(value, { stream: true })
+                    text = text.replace(/"name"\s*:\s*"mcp_([^"]+)"/g, '"name": "$1"')
+                    controller.enqueue(encoder.encode(text))
+                  },
+                })
+
+                return new Response(stream, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers,
+                })
+              }
+
+              return response
             },
           }
         }
