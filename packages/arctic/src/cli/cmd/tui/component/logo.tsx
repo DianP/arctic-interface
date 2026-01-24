@@ -16,7 +16,7 @@ type Segment = {
   bold?: boolean
 }
 
-export function Logo() {
+export function Logo(props?: { onConnectProvider?: () => void; onViewUsage?: () => void; onChangeTheme?: () => void; onChangeModel?: () => void; onJoinDiscord?: () => void }) {
   const { theme } = useTheme()
   const directory = useDirectory()
   const dimensions = useTerminalDimensions()
@@ -48,6 +48,62 @@ export function Logo() {
             </text>
           )}
         </For>
+        <box flexDirection="column" paddingTop={1} gap={0}>
+          <text fg={theme.textMuted}>
+            Welcome to Arctic! Get started by connecting a provider, checking usage stats, or managing multiple accounts.
+          </text>
+          <box flexDirection="column" gap={1} paddingTop={1}>
+            <box flexDirection="row" gap={1}>
+              <box
+                paddingLeft={1}
+                paddingRight={1}
+                backgroundColor={theme.primary}
+                onMouseUp={props?.onConnectProvider}
+              >
+                <text fg={theme.selectedListItemText}>Connect Provider</text>
+              </box>
+              <box
+                paddingLeft={1}
+                paddingRight={1}
+                backgroundColor={theme.primary}
+                onMouseUp={props?.onChangeModel}
+              >
+                <text fg={theme.selectedListItemText}>Change Model</text>
+              </box>
+              <box
+                paddingLeft={1}
+                paddingRight={1}
+                backgroundColor={theme.primary}
+                onMouseUp={props?.onViewUsage}
+              >
+                <text fg={theme.selectedListItemText}>View Usage</text>
+              </box>
+            </box>
+            <box flexDirection="row" gap={1}>
+              <box
+                paddingLeft={1}
+                paddingRight={1}
+                backgroundColor={theme.primary}
+                onMouseUp={props?.onChangeTheme}
+              >
+                <text fg={theme.selectedListItemText}>Change Theme</text>
+              </box>
+              <box
+                paddingLeft={1}
+                paddingRight={1}
+                backgroundColor={theme.primary}
+                onMouseUp={props?.onJoinDiscord}
+              >
+                <text fg={theme.selectedListItemText}>Join Discord</text>
+              </box>
+            </box>
+          </box>
+          <box paddingTop={1}>
+            <text fg={theme.textMuted}>
+              <span style={{ fg: theme.info }}>ctrl+p</span> commands · <span style={{ fg: theme.info }}>ctrl+x p</span> bypass permissions
+            </text>
+          </box>
+        </box>
       </box>
     </box>
   )

@@ -1,16 +1,16 @@
 import { Locale } from "@/util/locale"
-import { useKeyboard } from "@opentui/solid"
 import { Prompt, type PromptRef } from "@tui/component/prompt"
 import { useRouteData } from "@tui/context/route"
 import { useTheme } from "@tui/context/theme"
+import open from "open"
 import { createMemo, Match, onMount, Show, Switch } from "solid-js"
+import { useCommandDialog } from "../component/dialog-command"
 import { Logo } from "../component/logo"
 import { useArgs } from "../context/args"
 import { useExitConfirmation } from "../context/exit-confirmation"
-import { useKeybind } from "../context/keybind"
 import { usePromptRef } from "../context/prompt"
 import { useSync } from "../context/sync"
-import { Toast, useToast } from "../ui/toast"
+import { Toast } from "../ui/toast"
 
 // TODO: what is the best way to do this?
 let once = false
@@ -20,9 +20,8 @@ export function Home() {
   const { theme } = useTheme()
   const route = useRouteData("home")
   const promptRef = usePromptRef()
-  const toast = useToast()
-  const keybind = useKeybind()
   const exitConfirmation = useExitConfirmation()
+  const command = useCommandDialog()
   const mcpError = createMemo(() => {
     return Object.values(sync.data.mcp).some((x) => x.status === "failed")
   })
@@ -66,7 +65,13 @@ export function Home() {
   return (
     <>
       <box flexGrow={1} flexDirection="column" alignItems="flex-start" justifyContent="space-between" gap={1}>
-        <Logo />
+        <Logo
+          onConnectProvider={() => command.trigger("provider.connect")}
+          onChangeModel={() => command.trigger("model.list")}
+          onViewUsage={() => command.trigger("arctic.usage")}
+          onChangeTheme={() => command.trigger("theme.switch")}
+          onJoinDiscord={() => open("https://discord.gg/ZXqPu6GgsV").catch(() => {})}
+        />
         <box flexGrow={1} />
         <box width="100%" alignSelf="stretch" zIndex={1000}>
           <Prompt
