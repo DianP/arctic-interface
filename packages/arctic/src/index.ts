@@ -5,8 +5,10 @@ import { hideBin } from "yargs/helpers"
 import { maybeImportClaudeAgents, maybeImportClaudeCommands, maybeImportClaudeMcp } from "./cli/claude-import"
 import { AgentCommand } from "./cli/cmd/agent"
 import { AuthCommand } from "./cli/cmd/auth"
+import { BugCommand } from "./cli/cmd/bug"
 import { DebugCommand } from "./cli/cmd/debug"
 import { ExportCommand } from "./cli/cmd/export"
+import { FeedbackCommand } from "./cli/cmd/feedback"
 import { GenerateCommand } from "./cli/cmd/generate"
 import { ImportCommand } from "./cli/cmd/import"
 import { McpCommand } from "./cli/cmd/mcp"
@@ -107,6 +109,8 @@ const cli = yargs(hideBin(process.argv))
   .command(ImportCommand)
   .command(SessionCommand)
   .command(TelemetryCommand)
+  .command(FeedbackCommand)
+  .command(BugCommand)
   .fail((msg) => {
     if (
       msg.startsWith("Unknown argument") ||

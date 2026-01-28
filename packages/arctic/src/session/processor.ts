@@ -57,6 +57,34 @@ export namespace SessionProcessor {
             let reasoningMap: Record<string, MessageV2.ReasoningPart> = {}
             const stream = streamText(streamInput)
 
+            // batching for text deltas to reduce ui update frequency
+            let textDeltaBatch = ""
+            let textDeltaTimer: Timer | undefined
+            const flushTextDelta = async () => {
+              if (textDeltaBatch && currentText) {
+                await Session.updatePart({
+                  part: currentText,
+                  delta: textDeltaBatch,
+                })
+                textDeltaBatch = ""
+              }
+            }
+
+            // batching for reasoning deltas
+            const reasoningDeltaBatch: Record<string, string> = {}
+            let reasoningDeltaTimer: Timer | undefined
+            const flushReasoningDelta = async () => {
+              for (const [id, delta] of Object.entries(reasoningDeltaBatch)) {
+                const part = reasoningMap[id]
+                if (part && delta) {
+                  await Session.updatePart({ part, delta })
+                }
+              }
+              Object.keys(reasoningDeltaBatch).forEach((key) => {
+                reasoningDeltaBatch[key] = ""
+              })
+            }
+
             for await (const value of stream.fullStream) {
               input.abort.throwIfAborted()
               switch (value.type) {
@@ -86,12 +114,25 @@ export namespace SessionProcessor {
                     const part = reasoningMap[value.id]
                     part.text += value.text
                     if (value.providerMetadata) part.metadata = value.providerMetadata
-                    if (part.text) await Session.updatePart({ part, delta: value.text })
+                    // batch reasoning deltas
+                    if (!(value.id in reasoningDeltaBatch)) reasoningDeltaBatch[value.id] = ""
+                    reasoningDeltaBatch[value.id] += value.text
+                    if (reasoningDeltaTimer) clearTimeout(reasoningDeltaTimer)
+                    reasoningDeltaTimer = setTimeout(flushReasoningDelta, 50)
                   }
                   break
 
                 case "reasoning-end":
                   if (value.id in reasoningMap) {
+                    // flush any pending reasoning delta for this part
+                    if (reasoningDeltaTimer) clearTimeout(reasoningDeltaTimer)
+                    const delta = reasoningDeltaBatch[value.id]
+                    if (delta) {
+                      const part = reasoningMap[value.id]
+                      await Session.updatePart({ part, delta })
+                      delete reasoningDeltaBatch[value.id]
+                    }
+
                     const part = reasoningMap[value.id]
                     part.text = part.text.trimEnd()
 
@@ -317,16 +358,19 @@ export namespace SessionProcessor {
                   if (currentText) {
                     currentText.text += value.text
                     if (value.providerMetadata) currentText.metadata = value.providerMetadata
-                    if (currentText.text)
-                      await Session.updatePart({
-                        part: currentText,
-                        delta: value.text,
-                      })
+                    // batch text deltas to reduce ui update frequency
+                    textDeltaBatch += value.text
+                    if (textDeltaTimer) clearTimeout(textDeltaTimer)
+                    textDeltaTimer = setTimeout(flushTextDelta, 50)
                   }
                   break
 
                 case "text-end":
                   if (currentText) {
+                    // flush any pending text delta
+                    if (textDeltaTimer) clearTimeout(textDeltaTimer)
+                    await flushTextDelta()
+
                     currentText.text = currentText.text.trimEnd()
                     const textOutput = await Plugin.trigger(
                       "experimental.text.complete",

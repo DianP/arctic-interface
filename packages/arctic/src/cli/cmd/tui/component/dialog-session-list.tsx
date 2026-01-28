@@ -64,6 +64,7 @@ export function DialogSessionList() {
       title="Sessions"
       options={options()}
       current={currentSessionID()}
+      scrollbar={true}
       onMove={() => {
         setToDelete(undefined)
       }}

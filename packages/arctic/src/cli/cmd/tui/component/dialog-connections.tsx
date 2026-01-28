@@ -11,7 +11,7 @@ import { useToast } from "@tui/ui/toast"
 type ConnectionOption = {
   providerID: string
   baseProvider: string
-  connectionName: string
+  connectionName?: string
   displayName: string
   authLabel: string
 }
@@ -41,8 +41,6 @@ export function DialogConnections() {
 
     for (const provider of providers) {
       const parsed = Auth.parseKey(provider.id)
-      if (!parsed.connection) continue
-
       const authLabel = await getConnectionLabel(provider.id)
 
       connectionList.push({
@@ -62,7 +60,10 @@ export function DialogConnections() {
       if (a.baseProvider !== b.baseProvider) {
         return a.baseProvider.localeCompare(b.baseProvider)
       }
-      return a.connectionName.localeCompare(b.connectionName)
+      if (a.connectionName && b.connectionName) {
+        return a.connectionName.localeCompare(b.connectionName)
+      }
+      return a.displayName.localeCompare(b.displayName)
     })
 
     return sorted.map((conn) => ({
@@ -72,6 +73,42 @@ export function DialogConnections() {
       category: conn.baseProvider,
     }))
   })
+
+  const removeConnection = async (conn: ConnectionOption) => {
+    await Auth.remove(conn.providerID)
+    await sdk.client.instance.dispose()
+    await sync.bootstrap()
+    toast.show({ message: `Deleted ${conn.displayName}`, variant: "success" })
+
+    const remainingConnections = connections().filter((c) => c.providerID !== conn.providerID)
+    setConnections(remainingConnections)
+
+    if (remainingConnections.length === 0) {
+      dialog.clear()
+    }
+  }
+
+  const removeAllConnections = async () => {
+    const allConnections = connections()
+    if (allConnections.length === 0) return
+
+    const confirmed = await DialogConfirm.show(
+      dialog,
+      `Delete all ${allConnections.length} connections?`,
+      "This will remove all provider authentications and cannot be undone.",
+    )
+
+    if (!confirmed) return
+
+    for (const conn of allConnections) {
+      await Auth.remove(conn.providerID)
+    }
+
+    await sdk.client.instance.dispose()
+    await sync.bootstrap()
+    toast.show({ message: `Deleted ${allConnections.length} connections`, variant: "success" })
+    dialog.clear()
+  }
 
   const keybinds = createMemo(() => [
     {
@@ -86,18 +123,14 @@ export function DialogConnections() {
         )
 
         if (!confirmed) return
-
-        await Auth.remove(conn.providerID)
-        await sdk.client.instance.dispose()
-        await sync.bootstrap()
-        toast.show({ message: `Deleted ${conn.displayName}`, variant: "success" })
-
-        const remainingConnections = connections().filter((c) => c.providerID !== conn.providerID)
-        setConnections(remainingConnections)
-
-        if (remainingConnections.length === 0) {
-          dialog.clear()
-        }
+        await removeConnection(conn)
+      },
+    },
+    {
+      keybind: Keybind.parse("D")[0],
+      title: "delete all",
+      onTrigger: async () => {
+        await removeAllConnections()
       },
     },
   ])

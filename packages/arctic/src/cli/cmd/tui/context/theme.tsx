@@ -89,6 +89,9 @@ type ThemeColors = {
   markdownImage: RGBA
   markdownImageText: RGBA
   markdownCodeBlock: RGBA
+  markdownTableBorder: RGBA
+  markdownTableHeader: RGBA
+  markdownTableCell: RGBA
   syntaxComment: RGBA
   syntaxKeyword: RGBA
   syntaxFunction: RGBA
@@ -132,10 +135,16 @@ type ColorValue = HexColor | RefName | Variant | RGBA
 type ThemeJson = {
   $schema?: string
   defs?: Record<string, HexColor | RefName>
-  theme: Omit<Record<keyof ThemeColors, ColorValue>, "selectedListItemText" | "backgroundMenu"> & {
+  theme: Omit<
+    Record<keyof ThemeColors, ColorValue>,
+    "selectedListItemText" | "backgroundMenu" | "markdownTableBorder" | "markdownTableHeader" | "markdownTableCell"
+  > & {
     selectedListItemText?: ColorValue
     backgroundMenu?: ColorValue
     thinkingOpacity?: number
+    markdownTableBorder?: ColorValue
+    markdownTableHeader?: ColorValue
+    markdownTableCell?: ColorValue
   }
 }
 
@@ -215,7 +224,15 @@ function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
 
   const resolved = Object.fromEntries(
     Object.entries(theme.theme)
-      .filter(([key]) => key !== "selectedListItemText" && key !== "backgroundMenu" && key !== "thinkingOpacity")
+      .filter(
+        ([key]) =>
+          key !== "selectedListItemText" &&
+          key !== "backgroundMenu" &&
+          key !== "thinkingOpacity" &&
+          key !== "markdownTableBorder" &&
+          key !== "markdownTableHeader" &&
+          key !== "markdownTableCell",
+      )
       .map(([key, value]) => {
         return [key, resolveColor(value as ColorValue)]
       }),
@@ -236,6 +253,24 @@ function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
     resolved.backgroundMenu = resolveColor(theme.theme.backgroundMenu)
   } else {
     resolved.backgroundMenu = resolved.backgroundElement
+  }
+
+  if (theme.theme.markdownTableBorder !== undefined) {
+    resolved.markdownTableBorder = resolveColor(theme.theme.markdownTableBorder)
+  } else {
+    resolved.markdownTableBorder = resolved.border ?? RGBA.fromHex("#666666")
+  }
+
+  if (theme.theme.markdownTableHeader !== undefined) {
+    resolved.markdownTableHeader = resolveColor(theme.theme.markdownTableHeader)
+  } else {
+    resolved.markdownTableHeader = resolved.backgroundPanel ?? RGBA.fromHex("#333333")
+  }
+
+  if (theme.theme.markdownTableCell !== undefined) {
+    resolved.markdownTableCell = resolveColor(theme.theme.markdownTableCell)
+  } else {
+    resolved.markdownTableCell = RGBA.fromInts(0, 0, 0, 0)
   }
 
   // Handle thinkingOpacity - optional with default of 0.6
@@ -481,6 +516,9 @@ function generateSystem(colors: TerminalColors, mode: "dark" | "light"): ThemeJs
       markdownImage: ansiColors.blue,
       markdownImageText: ansiColors.cyan,
       markdownCodeBlock: fg,
+      markdownTableBorder: grays[7],
+      markdownTableHeader: grays[2],
+      markdownTableCell: RGBA.fromInts(0, 0, 0, 0),
 
       // Syntax colors
       syntaxComment: textMuted,

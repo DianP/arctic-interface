@@ -675,6 +675,26 @@ function App() {
       category: "System",
     },
     {
+      title: "Send feedback",
+      value: "arctic.feedback",
+      onSelect: () => {
+        const issueURL = new URL("https://github.com/arctic-cli/interface/issues/new?template=feature-request.yml")
+        open(issueURL.toString()).catch(() => {})
+        dialog.clear()
+      },
+      category: "System",
+    },
+    {
+      title: "Report a bug",
+      value: "arctic.bug",
+      onSelect: () => {
+        const issueURL = new URL("https://github.com/arctic-cli/interface/issues/new?template=bug-report.yml")
+        open(issueURL.toString()).catch(() => {})
+        dialog.clear()
+      },
+      category: "System",
+    },
+    {
       title: "Exit the app",
       value: "app.exit",
       onSelect: () => exit(),

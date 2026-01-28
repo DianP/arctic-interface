@@ -50,11 +50,11 @@
       "light": "#3a79d6"
     },
     "text": {
-      "dark": "frost5",
+      "dark": "#c5c8d1",
       "light": "#1b1b1b"
     },
     "textMuted": {
-      "dark": "mistText",
+      "dark": "#9ca3af",
       "light": "#5d5d5d"
     },
     "background": {
@@ -82,7 +82,7 @@
       "light": "#3a79d6"
     },
     "borderSubtle": {
-      "dark": "fjordDeep",
+      "dark": "#6b7280",
       "light": "#e1d7cc"
     },
     "diffAdded": {
@@ -188,6 +188,18 @@
     "markdownCodeBlock": {
       "dark": "frost5",
       "light": "#0D2035"
+    },
+    "markdownTableBorder": {
+      "dark": "frost4",
+      "light": "#d2c6ba"
+    },
+    "markdownTableHeader": {
+      "dark": "frost3",
+      "light": "#e0d6cc"
+    },
+    "markdownTableCell": {
+      "dark": "none",
+      "light": "none"
     },
     "syntaxComment": {
       "dark": "mistText",

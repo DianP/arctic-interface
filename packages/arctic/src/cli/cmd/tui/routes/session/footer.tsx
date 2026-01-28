@@ -1,5 +1,6 @@
+import { Pricing } from "@/provider/pricing"
 import type { AssistantMessage } from "@arctic-cli/sdk/v2"
-import { createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js"
+import { createEffect, createMemo, createSignal, Match, onCleanup, onMount, Show, Switch } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useConnected } from "../../component/dialog-model"
 import { useDirectory } from "../../context/directory"
@@ -25,6 +26,8 @@ export function Footer() {
     if (route.data.type !== "session") return []
     return sync.data.message[route.data.sessionID] ?? []
   })
+  const [sessionCost, setSessionCost] = createSignal<number | undefined>(undefined)
+
   const context = createMemo(() => {
     const last = messages().findLast((x) => x.role === "assistant" && x.tokens.output > 0) as AssistantMessage
     if (!last) return
@@ -36,6 +39,30 @@ export function Footer() {
       tokens: total.toLocaleString(),
       percentage: limit ? Math.round((total / limit) * 100) : null,
     }
+  })
+
+  createEffect(() => {
+    const msgs = messages()
+    let total = 0
+    let hasPricing = false
+
+    for (const msg of msgs) {
+      if (msg.role === "assistant" && msg.tokens.output > 0) {
+        const assistantMsg = msg as AssistantMessage
+        const costBreakdown = Pricing.calculateCost(assistantMsg.modelID, {
+          input: assistantMsg.tokens.input,
+          output: assistantMsg.tokens.output,
+          cacheCreation: assistantMsg.tokens.cache.write,
+          cacheRead: assistantMsg.tokens.cache.read,
+        })
+        if (costBreakdown) {
+          hasPricing = true
+          total += costBreakdown.totalCost
+        }
+      }
+    }
+
+    setSessionCost(hasPricing ? total : undefined)
   })
   const benchmarkLabel = createMemo(() => {
     const current = session()
@@ -116,6 +143,9 @@ export function Footer() {
               {(ctx) => (
                 <text fg={theme.textMuted}>
                   {ctx().tokens} tokens{ctx().percentage !== null ? ` (${ctx().percentage}%)` : ""}
+                  {sessionCost() !== undefined
+                    ? ` · $${sessionCost()! < 0.01 ? "0.00" : sessionCost()!.toFixed(2)}`
+                    : ""}
                 </text>
               )}
             </Show>

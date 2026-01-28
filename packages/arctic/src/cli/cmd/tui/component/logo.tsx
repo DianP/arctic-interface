@@ -94,7 +94,7 @@ export function Logo(props?: { onConnectProvider?: () => void; onViewUsage?: () 
                 backgroundColor={theme.primary}
                 onMouseUp={props?.onJoinDiscord}
               >
-                <text fg={theme.selectedListItemText}>Join Discord</text>
+                <text fg={theme.selectedListItemText}>Join the community</text>
               </box>
             </box>
           </box>

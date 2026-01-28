@@ -857,6 +857,8 @@ export function Prompt(props: PromptProps) {
       "/status": () => command.trigger("arctic.status", "prompt"),
       "/usage": () => command.trigger("arctic.usage", "prompt"),
       "/stats": () => command.trigger("arctic.stats", "prompt"),
+      "/feedback": () => command.trigger("arctic.feedback"),
+      "/bug": () => command.trigger("arctic.bug"),
     }
 
     let handledLocally = false
@@ -1413,7 +1415,7 @@ export function Prompt(props: PromptProps) {
             <text attributes={TextAttributes.BOLD} fg={highlight()}>
               {store.mode === "shell" ? "!" : ">"}
             </text>
-            <box flexGrow={1} flexShrink={1}>
+            <box flexGrow={1} flexShrink={1} paddingRight={1}>
               <textarea
                 width="100%"
                 backgroundColor="transparent"
@@ -1606,82 +1608,83 @@ export function Prompt(props: PromptProps) {
             </box>
           </box>
         </box>
-        <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
-          <text fg={highlight()} onMouseUp={() => dialog.replace(() => <DialogAgent />)}>
-            {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}
-          </text>
-          <Show when={store.mode === "normal"}>
-            <text fg={theme.textMuted}>·</text>
-            <box flexDirection="row" gap={1} onMouseUp={() => dialog.replace(() => <DialogModel />)}>
-              <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
-                {displayModel().model}
-              </text>
-              {(() => {
-                const model = local.model.current()
-                const supportsReasoning = local.thinking.supportsReasoning()
-                const isGitHubCopilot = model?.providerID === "github-copilot" || model?.providerID === "github-copilot-enterprise"
-                const multiplier = isGitHubCopilot && model ? Pricing.getCopilotMultiplier(model.modelID, "paid") : null
-                
-                const showBadge = supportsReasoning || (isGitHubCopilot && multiplier !== null)
-                if (!showBadge) return null
-                
-                const parts: string[] = []
-                if (supportsReasoning) {
-                  parts.push(local.thinking.current())
-                }
-                if (isGitHubCopilot && multiplier !== null) {
-                  parts.push(`x${multiplier}`)
-                }
-                
-                return (
-                  <text
-                    fg={
-                      supportsReasoning
-                        ? { low: theme.textMuted, medium: theme.warning, high: theme.primary }[local.thinking.current()] ??
-                          theme.textMuted
-                        : theme.textMuted
-                    }
-                    onMouseUp={(e) => {
-                      e.stopPropagation()
-                      supportsReasoning && local.thinking.cycle()
-                    }}
-                  >
-                    ({parts.join(", ")})
-                  </text>
-                )
-              })()}
-              <text fg={theme.textMuted}>{displayModel().provider}</text>
-            </box>
-            <Show when={usageLimits() !== undefined}>
+        <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1} flexWrap="wrap">
+          <box flexDirection="row" gap={1} flexShrink={0}>
+            <text fg={highlight()} onMouseUp={() => dialog.replace(() => <DialogAgent />)}>
+              {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}
+            </text>
+            <Show when={store.mode === "normal"}>
               <text fg={theme.textMuted}>·</text>
-              {(() => {
-                const limits = usageLimits()!
-                const model = local.model.current()
-                const isMinimax = model?.providerID === "minimax" || model?.providerID === "minimax-coding-plan"
-                const remaining = limits.percent !== undefined ? Math.max(0, 100 - limits.percent) : undefined
-                const percentValue = isMinimax ? (limits.percent ?? undefined) : remaining
-                const color = percentValue !== undefined && percentValue <= 15 ? theme.error : theme.textMuted
-                const label = (() => {
-                  if (percentValue !== undefined) {
-                    return `${percentValue.toFixed(0)}% left${limits.timeLeft ? ` (${limits.timeLeft})` : ""}`
+              <box flexDirection="row" gap={1} onMouseUp={() => dialog.replace(() => <DialogModel />)}>
+                <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
+                  {displayModel().model}
+                </text>
+                {(() => {
+                  const model = local.model.current()
+                  const supportsReasoning = local.thinking.supportsReasoning()
+                  const isGitHubCopilot =
+                    model?.providerID === "github-copilot" || model?.providerID === "github-copilot-enterprise"
+                  const multiplier =
+                    isGitHubCopilot && model ? Pricing.getCopilotMultiplier(model.modelID, "paid") : null
+
+                  const showBadge = supportsReasoning || (isGitHubCopilot && multiplier !== null)
+                  if (!showBadge) return null
+
+                  const parts: string[] = []
+                  if (supportsReasoning) {
+                    parts.push(local.thinking.current())
                   }
-                  return limits.timeLeft ? `resets in ${limits.timeLeft}` : ""
-                })()
-                return (
-                  <text fg={color} onMouseUp={() => command.trigger("arctic.usage", "prompt")}>
-                    {label}
-                  </text>
-                )
-              })()}
+                  if (isGitHubCopilot && multiplier !== null) {
+                    parts.push(`x${multiplier}`)
+                  }
+
+                  return (
+                    <text
+                      fg={
+                        supportsReasoning
+                          ? ({ low: theme.textMuted, medium: theme.warning, high: theme.primary }[
+                              local.thinking.current()
+                            ] ?? theme.textMuted)
+                          : theme.textMuted
+                      }
+                      onMouseUp={(e) => {
+                        e.stopPropagation()
+                        supportsReasoning && local.thinking.cycle()
+                      }}
+                    >
+                      ({parts.join(", ")})
+                    </text>
+                  )
+                })()}
+                <text fg={theme.textMuted}>{displayModel().provider}</text>
+              </box>
             </Show>
-            <Show when={sessionCost() !== undefined}>
-              <text fg={theme.textMuted}>·</text>
-              <text fg={theme.textMuted}>session: ${sessionCost()! < 0.01 ? "0.00" : sessionCost()!.toFixed(2)}</text>
-            </Show>
-            <Show when={dailyCost() !== undefined}>
-              <text fg={theme.textMuted}>·</text>
-              <text fg={theme.textMuted}>today: ${dailyCost()! < 0.01 ? "0.00" : dailyCost()!.toFixed(2)}</text>
-            </Show>
+          </box>
+          <Show when={store.mode === "normal"}>
+            <box flexDirection="row" gap={1} flexShrink={0}>
+              <Show when={usageLimits() !== undefined}>
+                <text fg={theme.textMuted}>·</text>
+                {(() => {
+                  const limits = usageLimits()!
+                  const model = local.model.current()
+                  const isMinimax = model?.providerID === "minimax" || model?.providerID === "minimax-coding-plan"
+                  const remaining = limits.percent !== undefined ? Math.max(0, 100 - limits.percent) : undefined
+                  const percentValue = isMinimax ? (limits.percent ?? undefined) : remaining
+                  const color = percentValue !== undefined && percentValue <= 15 ? theme.error : theme.textMuted
+                  const label = (() => {
+                    if (percentValue !== undefined) {
+                      return `${percentValue.toFixed(0)}% left${limits.timeLeft ? ` (${limits.timeLeft})` : ""}`
+                    }
+                    return limits.timeLeft ? `resets in ${limits.timeLeft}` : ""
+                  })()
+                  return (
+                    <text fg={color} onMouseUp={() => command.trigger("arctic.usage", "prompt")}>
+                      {label}
+                    </text>
+                  )
+                })()}
+              </Show>
+            </box>
           </Show>
         </box>
         <Show when={props.exitConfirmation}>

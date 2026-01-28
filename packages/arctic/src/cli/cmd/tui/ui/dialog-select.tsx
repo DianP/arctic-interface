@@ -1,6 +1,7 @@
 import { InputRenderable, RGBA, ScrollBoxRenderable, TextAttributes } from "@opentui/core"
 import { useTheme, selectedForeground } from "@tui/context/theme"
-import { entries, filter, flatMap, groupBy, pipe, take } from "remeda"
+import { entries, filter, flatMap, groupBy, pipe } from "remeda"
+import { useScrollbar } from "@tui/component/scrollbar"
 import { batch, createEffect, createMemo, For, Show, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
@@ -26,6 +27,7 @@ export interface DialogSelectProps<T> {
     onTrigger: (option: DialogSelectOption<T>) => void
   }[]
   current?: T
+  scrollbar?: boolean
 }
 
 export interface DialogSelectOption<T = any> {
@@ -207,8 +209,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
       </box>
       <scrollbox
         paddingLeft={1}
-        paddingRight={1}
-        scrollbarOptions={{ visible: false }}
+        paddingRight={0}
+        verticalScrollbarOptions={{ visible: false }}
         ref={(r: ScrollBoxRenderable) => (scroll = r)}
         maxHeight={height()}
       >

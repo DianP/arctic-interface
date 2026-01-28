@@ -1,5 +1,5 @@
-import { Ide } from "@/ide"
 import { Identifier } from "@/id/id"
+import { Ide } from "@/ide"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
 import { BashTool } from "@/tool/bash"
 import type { EditTool } from "@/tool/edit"
@@ -20,6 +20,7 @@ import {
   addDefaultParsers,
   BoxRenderable,
   MacOSScrollAccel,
+  RGBA,
   ScrollBoxRenderable,
   TextAttributes,
   type ScrollAcceleration,
@@ -27,6 +28,7 @@ import {
 import { useKeyboard, useRenderer, useTerminalDimensions, type BoxProps, type JSX } from "@opentui/solid"
 import { SplitBorder } from "@tui/component/border"
 import { useCommandDialog } from "@tui/component/dialog-command"
+import { Markdown } from "@tui/component/markdown"
 import { Prompt, type PromptRef } from "@tui/component/prompt"
 import { useExitConfirmation } from "@tui/context/exit-confirmation"
 import { useKeybind } from "@tui/context/keybind"
@@ -168,6 +170,19 @@ export function Session() {
   const [showDetails, setShowDetails] = createSignal(kv.get("tool_details_visibility", true))
   const [showScrollbar, setShowScrollbar] = createSignal(kv.get("scrollbar_visible", true))
   const [showSidebar, setShowSidebar] = createSignal(kv.get("sidebar_visible", false))
+
+  const [canScroll, setCanScroll] = createSignal(true)
+
+  // check overflow only when messages or dimensions change, not on interval
+  createEffect(() => {
+    if (!scroll) return
+    // trigger on messages or dimensions change
+    messages()
+    dimensions()
+    const contentHeight = scroll.scrollHeight
+    const viewportHeight = scroll.height
+    setCanScroll(contentHeight > viewportHeight)
+  })
   const [userMessageMarkdown, setUserMessageMarkdown] = createSignal(kv.get("user_message_markdown", true))
   const [diffWrapMode, setDiffWrapMode] = createSignal<"word" | "none">("word")
 
@@ -1205,14 +1220,15 @@ export function Session() {
               paddingLeft="0.5%"
               paddingRight="0.5%"
               viewportOptions={{
-                paddingRight: showScrollbar() ? 1 : 0,
+                paddingRight: 1,
               }}
               verticalScrollbarOptions={{
-                paddingLeft: 1,
-                visible: showScrollbar(),
+                visible: true,
+                width: 1,
                 trackOptions: {
-                  backgroundColor: theme.background,
-                  foregroundColor: theme.borderSubtle,
+                  backgroundColor: RGBA.fromInts(0, 0, 0, 0),
+                  foregroundColor: theme.textMuted,
+                  width: 1,
                 },
               }}
               stickyScroll={true}
@@ -1359,16 +1375,6 @@ export function Session() {
   )
 }
 
-const MIME_BADGE: Record<string, string> = {
-  "text/plain": "txt",
-  "image/png": "img",
-  "image/jpeg": "img",
-  "image/gif": "img",
-  "image/webp": "img",
-  "application/pdf": "pdf",
-  "application/x-directory": "dir",
-}
-
 function UserMessage(props: {
   message: UserMessage
   parts: Part[]
@@ -1382,58 +1388,56 @@ function UserMessage(props: {
     return textParts.find((part) => !part.synthetic) ?? textParts[0]
   })
   const files = createMemo(() => props.parts.flatMap((x) => (x.type === "file" ? [x] : [])))
-  const { theme, syntax } = useTheme()
+  const { theme } = useTheme()
   const queued = createMemo(() => props.pending && props.message.id > props.pending)
-
   const compaction = createMemo(() => props.parts.find((x) => x.type === "compaction"))
+
+  const contentWidth = createMemo(() => {
+    const textLen = (text()?.text ?? "").length
+    const filesLen = files().reduce((acc, f) => acc + 2 + (f.filename?.length ?? 0) + 1, 0)
+    return Math.max(20, Math.min(textLen + filesLen + 4, ctx.width - 4))
+  })
+
+  const line = createMemo(() => "─".repeat(contentWidth()))
 
   return (
     <>
       <Show when={text()}>
-        <box id={props.message.id} marginTop={1}>
-          <box onMouseUp={props.onMouseUp} paddingTop={0} paddingBottom={0}>
-            <box paddingLeft={0} paddingRight={1} flexDirection="row">
-              <text fg={theme.textMuted} attributes={TextAttributes.BOLD}>{"> "}</text>
-              <box flexGrow={1} flexShrink={1}>
-                <text fg={theme.primary}>{formatUserText(text()?.text ?? "")}</text>
-              </box>
-            </box>
-            <Show when={files().length}>
-              <box flexDirection="row" paddingBottom={1} paddingTop={1} gap={1} flexWrap="wrap">
-                <For each={files()}>
-                  {(file) => {
-                    const badge = MIME_BADGE[file.mime] ?? file.mime
-                    const bg = createMemo(() => {
-                      if (file.mime.startsWith("image/")) return theme.accent
-                      if (file.mime === "application/pdf") return theme.primary
-                      return theme.secondary
-                    })
-                    return (
-                      <text fg={theme.text}>
-                        <span style={{ bg: bg(), fg: theme.background }}> {badge} </span>
-                        <span style={{ bg: theme.backgroundElement, fg: theme.textMuted }}> {file.filename} </span>
-                      </text>
-                    )
-                  }}
-                </For>
-              </box>
-            </Show>
-            <text fg={theme.textMuted}>
-              <Show
-                when={queued()}
-                fallback={
-                  <Show when={ctx.showTimestamps()}>
-                    <span style={{ fg: theme.textMuted }}>
-                      {Locale.todayTimeOrDateTime(props.message.time.created)}
-                    </span>
-                  </Show>
-                }
-              >
-                <span> </span>
-                <span style={{ bg: theme.accent, fg: theme.backgroundPanel, bold: true }}> QUEUED </span>
-              </Show>
+        <box id={props.message.id} marginTop={1} flexDirection="column" gap={0}>
+          <text fg={theme.textMuted}>{line()}</text>
+          <box flexDirection="row" gap={1}>
+            <text fg={theme.primary} attributes={TextAttributes.BOLD}>
+              {"▶"}
             </text>
+            <box flexGrow={1} flexShrink={1} flexDirection="column" gap={0}>
+              <box flexDirection="row" flexWrap="wrap" gap={1} onMouseUp={props.onMouseUp}>
+                <text fg={theme.text} wrapMode="word" width="100%">
+                  {formatUserText(text()?.text ?? "")}
+                </text>
+                <Show when={files().length}>
+                  <For each={files()}>
+                    {(file) => {
+                      const icon = file.mime.startsWith("image/") ? "🖼" : file.mime === "application/pdf" ? "📄" : "📎"
+                      return (
+                        <text fg={theme.textMuted}>
+                          {icon} {file.filename}
+                        </text>
+                      )
+                    }}
+                  </For>
+                </Show>
+              </box>
+              <Show when={queued()}>
+                <text fg={theme.accent} attributes={TextAttributes.BOLD}>
+                  QUEUED
+                </text>
+              </Show>
+              <Show when={!queued() && ctx.showTimestamps()}>
+                <text fg={theme.textMuted}>{Locale.todayTimeOrDateTime(props.message.time.created)}</text>
+              </Show>
+            </box>
           </box>
+          <text fg={theme.textMuted}>{line()}</text>
         </box>
       </Show>
       <Show when={compaction()}>
@@ -1574,15 +1578,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         <Switch>
           <Match when={ctx.showThinking()}>
             <box paddingLeft={1} paddingRight={1} flexDirection="row">
-              <code
-                filetype="markdown"
-                drawUnstyledText={false}
-                streaming={true}
-                syntaxStyle={subtleSyntax()}
-                content={"_Thinking:_ " + text()}
-                conceal={ctx.conceal()}
-                fg={theme.textMuted}
-              />
+              <Markdown content={"_Thinking:_ " + text()} conceal={ctx.conceal()} streaming={isThinking()} />
             </box>
           </Match>
           <Match when={true}>
@@ -1625,27 +1621,20 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage; textIndex?: number }) {
   const ctx = use()
-  const { theme, syntax } = useTheme()
+  const { theme } = useTheme()
   const isFirst = () => props.textIndex === 0
+  const isStreaming = () => !props.message.time.completed
   return (
     <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={0} marginTop={isFirst() ? 1 : 0} flexDirection="row">
+      <box id={"text-" + props.part.id} marginTop={isFirst() ? 1 : 0} flexDirection="row" gap={1}>
         <Show when={isFirst()}>
-          <text fg={theme.primary}>● </text>
+          <text fg={theme.primary}>●</text>
         </Show>
         <Show when={!isFirst()}>
-          <text>{"  "}</text>
+          <text> </text>
         </Show>
         <box flexGrow={1} flexShrink={1}>
-          <code
-            filetype="markdown"
-            drawUnstyledText={false}
-            streaming={true}
-            syntaxStyle={syntax()}
-            content={formatAssistantText(props.part.text.trim(), isFirst())}
-            conceal={ctx.conceal()}
-            fg={theme.text}
-          />
+          <Markdown content={props.part.text.trim()} conceal={ctx.conceal()} streaming={isStreaming()} />
         </box>
       </box>
     </Show>
@@ -1655,18 +1644,6 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
 function formatUserText(value: string) {
   if (!value.trim()) return ""
   return value
-}
-
-function formatAssistantText(value: string, isFirstTextPart: boolean) {
-  if (!value) return value
-  const lines = value.split(/\r?\n/)
-  return lines
-    .map((line, idx) => {
-      if (!line.trim()) return ""
-      if (isFirstTextPart && idx === 0) return line
-      return `  ${line}`
-    })
-    .join("\n")
 }
 
 // Pending messages moved to individual tool pending functions
@@ -1912,7 +1889,12 @@ ToolRegistry.register<typeof ReadTool>({
     })
     return (
       <>
-        <ToolTitle fallback="Reading file..." when={props.input.filePath} summary={summary()} filePath={props.input.filePath}>
+        <ToolTitle
+          fallback="Reading file..."
+          when={props.input.filePath}
+          summary={summary()}
+          filePath={props.input.filePath}
+        >
           Read({normalizePath(props.input.filePath!)})
         </ToolTitle>
       </>
@@ -1940,7 +1922,12 @@ ToolRegistry.register<typeof WriteTool>({
 
     return (
       <>
-        <ToolTitle fallback="Preparing write..." when={props.input.filePath} summary={summary()} filePath={props.input.filePath}>
+        <ToolTitle
+          fallback="Preparing write..."
+          when={props.input.filePath}
+          summary={summary()}
+          filePath={props.input.filePath}
+        >
           Write({normalizePath(props.input.filePath!)})
         </ToolTitle>
         <line_number fg={theme.textMuted} bg={theme.backgroundPanel} minWidth={3} paddingRight={1}>
@@ -2141,7 +2128,12 @@ ToolRegistry.register<typeof EditTool>({
 
     return (
       <>
-        <ToolTitle fallback="Preparing edit..." when={props.input.filePath} summary={summary()} filePath={props.input.filePath}>
+        <ToolTitle
+          fallback="Preparing edit..."
+          when={props.input.filePath}
+          summary={summary()}
+          filePath={props.input.filePath}
+        >
           Update({normalizePath(props.input.filePath!)})
         </ToolTitle>
         <Show when={diffContent()}>
@@ -2154,7 +2146,7 @@ ToolRegistry.register<typeof EditTool>({
               showLineNumbers={true}
               width="100%"
               wrapMode={ctx.diffWrapMode()}
-              fg={theme.text}
+              fg={theme.textMuted}
               addedBg={theme.diffAddedBg}
               removedBg={theme.diffRemovedBg}
               contextBg={theme.diffContextBg}

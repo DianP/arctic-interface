@@ -1,5 +1,6 @@
 import matter from "gray-matter"
 import { Config } from "../config/config"
+import { Global } from "../global"
 import { Instance } from "../project/instance"
 import { Log } from "../util/log"
 import { Skill } from "./types"
@@ -14,6 +15,8 @@ export namespace SkillRegistry {
     const directories = await Config.directories()
 
     for (const dir of directories) {
+      if (dir === Global.Path.config) continue
+
       for await (const item of SKILL_GLOB.scan({
         absolute: true,
         followSymlinks: true,
@@ -35,7 +38,9 @@ export namespace SkillRegistry {
   })
 
   async function parseSkill(filepath: string): Promise<Skill.Info | null> {
-    const template = await Bun.file(filepath).text().catch(() => null)
+    const template = await Bun.file(filepath)
+      .text()
+      .catch(() => null)
     if (!template) return null
 
     const md = matter(template)

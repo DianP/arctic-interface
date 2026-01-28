@@ -231,6 +231,8 @@ export function Autocomplete(props: {
       "help",
       "commands",
       "exit",
+      "feedback",
+      "bug",
     ])
 
     for (const command of sync.data.command) {
@@ -457,6 +459,16 @@ export function Autocomplete(props: {
         aliases: ["/quit", "/q"],
         description: "exit the app",
         onSelect: () => command.trigger("app.exit"),
+      },
+      {
+        display: "/feedback",
+        description: "send feedback to the Arctic team",
+        onSelect: () => command.trigger("arctic.feedback"),
+      },
+      {
+        display: "/bug",
+        description: "report a bug to the Arctic team",
+        onSelect: () => command.trigger("arctic.bug"),
       },
     )
     const max = firstBy(results, [(x) => x.display.length, "desc"])?.display.length

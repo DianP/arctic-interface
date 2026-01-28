@@ -64,16 +64,17 @@ export function Home() {
 
   return (
     <>
-      <box flexGrow={1} flexDirection="column" alignItems="flex-start" justifyContent="space-between" gap={1}>
-        <Logo
-          onConnectProvider={() => command.trigger("provider.connect")}
-          onChangeModel={() => command.trigger("model.list")}
-          onViewUsage={() => command.trigger("arctic.usage")}
-          onChangeTheme={() => command.trigger("theme.switch")}
-          onJoinDiscord={() => open("https://discord.gg/ZXqPu6GgsV").catch(() => {})}
-        />
-        <box flexGrow={1} />
-        <box width="100%" alignSelf="stretch" zIndex={1000}>
+      <box flexGrow={1} flexDirection="column" alignItems="flex-start" justifyContent="flex-end" gap={1}>
+        <scrollbox flexGrow={1} flexShrink={1} width="100%">
+          <Logo
+            onConnectProvider={() => command.trigger("provider.connect")}
+            onChangeModel={() => command.trigger("model.list")}
+            onViewUsage={() => command.trigger("arctic.usage")}
+            onChangeTheme={() => command.trigger("theme.switch")}
+            onJoinDiscord={() => open("https://discord.gg/ZXqPu6GgsV").catch(() => {})}
+          />
+        </scrollbox>
+        <box width="100%" alignSelf="stretch" zIndex={1000} flexShrink={0}>
           <Prompt
             ref={(r) => {
               prompt = r

@@ -1,0 +1,57 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in Arctic
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the information below to help us fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected to happen.
+      placeholder: When I try to..., Arctic does... instead of...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Go to...
+        2. Click on...
+        3. See error...
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Arctic Version
+      description: Run `arctic --version` to get the version
+      placeholder: e.g., 0.1.0
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you using?
+      placeholder: e.g., macOS 14, Ubuntu 22.04, Windows 11
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any other context, screenshots, or logs that might help.
+      placeholder: Any other details...
+    validations:
+      required: false
