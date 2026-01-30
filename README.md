@@ -41,18 +41,21 @@ arctic
 <summary><strong>Coming from Claude Code?</strong></summary>
 
 Arctic automatically imports your Claude Code setup—custom commands, agents from `~/.claude/agents/`, and MCP servers work out of the box.
+
 </details>
 
 <details>
 <summary><strong>Is my data private?</strong></summary>
 
 Yes. Arctic runs on your machine and connects directly to your AI provider. Your conversations and data are stored locally on your device and never sent to external servers. We do collect anonymous telemetry to understand how Arctic is used, but this is temporary while Arctic is early in development. You can disable telemetry anytime with `arctic telemetry disable`.
+
 </details>
 
 <details>
 <summary><strong>Can I use my own API keys?</strong></summary>
 
 Yes. Arctic supports API keys for OpenAI, Anthropic, Google, Perplexity, Openrouter, Ollama, and more.
+
 </details>
 
 <details>
@@ -69,6 +72,7 @@ To check the current telemetry status:
 ```bash
 arctic telemetry status
 ```
+
 </details>
 
 ## Contributing

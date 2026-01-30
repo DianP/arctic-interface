@@ -1393,9 +1393,11 @@ function UserMessage(props: {
   const compaction = createMemo(() => props.parts.find((x) => x.type === "compaction"))
 
   const contentWidth = createMemo(() => {
-    const textLen = (text()?.text ?? "").length
+    const textContent = text()?.text ?? ""
+    const lines = textContent.split("\n")
+    const longestLineLen = lines.reduce((max, line) => Math.max(max, line.length), 0)
     const filesLen = files().reduce((acc, f) => acc + 2 + (f.filename?.length ?? 0) + 1, 0)
-    return Math.max(20, Math.min(textLen + filesLen + 4, ctx.width - 4))
+    return Math.max(10, Math.min(longestLineLen + filesLen + 4, ctx.width - 4))
   })
 
   const line = createMemo(() => "─".repeat(contentWidth()))
@@ -1409,7 +1411,7 @@ function UserMessage(props: {
             <text fg={theme.primary} attributes={TextAttributes.BOLD}>
               {"▶"}
             </text>
-            <box flexGrow={1} flexShrink={1} flexDirection="column" gap={0}>
+            <box flexGrow={1} flexShrink={1} flexDirection="column" gap={0} maxWidth={contentWidth() - 3}>
               <box flexDirection="row" flexWrap="wrap" gap={1} onMouseUp={props.onMouseUp}>
                 <text fg={theme.text} wrapMode="word" width="100%">
                   {formatUserText(text()?.text ?? "")}
@@ -1417,10 +1419,14 @@ function UserMessage(props: {
                 <Show when={files().length}>
                   <For each={files()}>
                     {(file) => {
-                      const icon = file.mime.startsWith("image/") ? "🖼" : file.mime === "application/pdf" ? "📄" : "📎"
+                      const label = createMemo(() => {
+                        if (file.mime.startsWith("image/")) return "[Image]"
+                        if (file.filename) return `[${file.filename}]`
+                        return "[File]"
+                      })
                       return (
                         <text fg={theme.textMuted}>
-                          {icon} {file.filename}
+                          {label()}
                         </text>
                       )
                     }}
