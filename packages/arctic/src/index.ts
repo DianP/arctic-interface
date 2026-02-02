@@ -13,11 +13,9 @@ import { GenerateCommand } from "./cli/cmd/generate"
 import { ImportCommand } from "./cli/cmd/import"
 import { McpCommand } from "./cli/cmd/mcp"
 import { ModelsCommand } from "./cli/cmd/models"
-import { RunCommand } from "./cli/cmd/run"
 import { SessionCommand } from "./cli/cmd/session"
 import { StatsCommand } from "./cli/cmd/stats"
 import { TelemetryCommand } from "./cli/cmd/telemetry"
-import { TuiThreadCommand } from "./cli/cmd/tui/thread"
 import { UninstallCommand } from "./cli/cmd/uninstall"
 import { UpgradeCommand } from "./cli/cmd/upgrade"
 import { FormatError } from "./cli/error"
@@ -27,6 +25,120 @@ import { UI } from "./cli/ui"
 import { Installation } from "./installation"
 import { Telemetry } from "./telemetry"
 import { Log } from "./util/log"
+
+const RunCommand: any = {
+  command: "run [message..]",
+  describe: "run arctic with a message",
+  builder: (yargs: any) => {
+    return yargs
+      .positional("message", {
+        describe: "message to send",
+        type: "string",
+        array: true,
+        default: [],
+      })
+      .option("command", {
+        describe: "the command to run, use message for args",
+        type: "string",
+      })
+      .option("continue", {
+        alias: ["c"],
+        describe: "continue the last session",
+        type: "boolean",
+      })
+      .option("session", {
+        alias: ["s"],
+        describe: "session id to continue",
+        type: "string",
+      })
+      .option("model", {
+        type: "string",
+        alias: ["m"],
+        describe: "model to use in the format of provider/model",
+      })
+      .option("agent", {
+        type: "string",
+        describe: "agent to use",
+      })
+      .option("format", {
+        type: "string",
+        choices: ["default", "json"],
+        default: "default",
+        describe: "format: default (formatted) or json (raw JSON events)",
+      })
+      .option("file", {
+        alias: ["f"],
+        type: "string",
+        array: true,
+        describe: "file(s) to attach to message",
+      })
+      .option("title", {
+        type: "string",
+        describe: "title for the session (uses truncated prompt if no value provided)",
+      })
+      .option("attach", {
+        type: "string",
+        describe: "attach to a running arctic server (e.g., http://localhost:4096)",
+      })
+  },
+  handler: async (args: any) => {
+    const { RunCommand: Cmd } = await import("./cli/cmd/run")
+    return Cmd.handler(args)
+  },
+}
+
+const TuiThreadCommand: any = {
+  command: "$0 [project]",
+  describe: "start arctic tui",
+  builder: (yargs: any) =>
+    yargs
+      .positional("project", {
+        type: "string",
+        describe: "path to start arctic in",
+      })
+      .option("model", {
+        type: "string",
+        alias: ["m"],
+        describe: "model to use in the format of provider/model",
+      })
+      .option("continue", {
+        alias: ["c"],
+        describe: "continue the last session",
+        type: "boolean",
+      })
+      .option("session", {
+        alias: ["s"],
+        type: "string",
+        describe: "session id to continue",
+      })
+      .option("prompt", {
+        alias: ["p"],
+        type: "string",
+        describe: "prompt to use",
+      })
+      .option("agent", {
+        type: "string",
+        describe: "agent to use",
+      })
+      .option("onboarding", {
+        type: "boolean",
+        describe: "show onboarding flow",
+      })
+      .option("file", {
+        alias: ["f"],
+        type: "string",
+        array: true,
+        describe: "file(s) to attach to initial message",
+      })
+      .option("title", {
+        type: "string",
+        describe: "title for the session (uses truncated prompt if no value provided)",
+      }),
+  handler: async (args: any) => {
+    const { TuiThreadCommand: Cmd } = await import("./cli/cmd/tui/thread")
+    return Cmd.handler(args)
+  },
+}
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {

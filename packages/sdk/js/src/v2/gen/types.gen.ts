@@ -1439,6 +1439,7 @@ export type Config = {
   command?: {
     [key: string]: {
       template: string
+      aliases?: Array<string>
       description?: string
       agent?: string
       model?: string

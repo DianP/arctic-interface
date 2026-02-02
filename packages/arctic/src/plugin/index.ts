@@ -1,5 +1,4 @@
 import type { Hooks, PluginInput, Plugin as PluginInstance } from "@arctic-cli/plugin"
-import { createArcticClient } from "@arctic-cli/sdk"
 import { ArcticAmpAuth } from "../auth/amp-auth/index"
 import { ArcticAnthropicAuth } from "../auth/anthropic-oauth/index"
 import { ArcticAntigravityAuth } from "../auth/antigravity-oauth/index"
@@ -18,6 +17,7 @@ export namespace Plugin {
   const log = Log.create({ service: "plugin" })
 
   const state = Instance.state(async () => {
+    const { createArcticClient } = await import("@arctic-cli/sdk")
     const client = createArcticClient({
       baseUrl: "http://localhost:4096",
       // @ts-ignore - fetch type incompatibility
