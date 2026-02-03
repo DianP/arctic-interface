@@ -25,10 +25,13 @@ export function DialogConfirm(props: DialogConfirmProps) {
       if (store.active === "confirm") props.onConfirm?.()
       if (store.active === "cancel") props.onCancel?.()
       dialog.clear()
+      evt.preventDefault()
+      return
     }
 
     if (evt.name === "left" || evt.name === "right") {
       setStore("active", store.active === "confirm" ? "cancel" : "confirm")
+      evt.preventDefault()
     }
   })
   return (

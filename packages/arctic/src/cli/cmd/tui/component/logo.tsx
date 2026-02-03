@@ -9,6 +9,7 @@ import { useDirectory } from "../context/directory"
 
 type Theme = ReturnType<typeof useTheme>["theme"]
 const MIN_CARD_WIDTH = 36
+const MAX_CARD_WIDTH = 100
 
 type Segment = {
   text: string
@@ -23,12 +24,13 @@ export function Logo(props?: { onConnectProvider?: () => void; onViewUsage?: () 
   const recentSessions = createMemo(() => loadRecentSessions(3, directory()))
   const cardWidth = createMemo(() => {
     const available = Math.max(dimensions().width - 4, MIN_CARD_WIDTH * 2)
-    return Math.max(MIN_CARD_WIDTH, Math.floor(available / 2))
+    const calculated = Math.max(MIN_CARD_WIDTH, Math.floor(available / 2))
+    return Math.min(calculated, MAX_CARD_WIDTH)
   })
   const rows = createMemo(() => buildCard(theme, directory(), cardWidth(), recentSessions()))
 
   return (
-    <box width={cardWidth()} alignItems="flex-start" justifyContent="flex-start" paddingRight="0.5%" paddingLeft="0.5%">
+    <box width={cardWidth()} alignItems="flex-start" justifyContent="flex-start">
       <box flexDirection="column" gap={0}>
         <For each={rows()}>
           {(row) => (

@@ -1400,6 +1400,8 @@ function UserMessage(props: {
     return Math.max(10, Math.min(longestLineLen + filesLen + 4, ctx.width - 4))
   })
 
+  const textWidth = createMemo(() => Math.max(10, ctx.width - 8))
+
   const line = createMemo(() => "─".repeat(contentWidth()))
 
   return (
@@ -1411,9 +1413,9 @@ function UserMessage(props: {
             <text fg={theme.primary} attributes={TextAttributes.BOLD}>
               {"▶"}
             </text>
-            <box flexGrow={1} flexShrink={1} flexDirection="column" gap={0} maxWidth={contentWidth() - 3}>
+            <box flexGrow={1} flexShrink={1} flexDirection="column" gap={0}>
               <box flexDirection="row" flexWrap="wrap" gap={1} onMouseUp={props.onMouseUp}>
-                <text fg={theme.text} wrapMode="word" width="100%">
+                <text fg={theme.text} wrapMode="word" width={textWidth()}>
                   {formatUserText(text()?.text ?? "")}
                 </text>
                 <Show when={files().length}>

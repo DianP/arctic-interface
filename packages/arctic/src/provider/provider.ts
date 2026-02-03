@@ -443,14 +443,6 @@ export namespace Provider {
         },
       }
     },
-    "minimax-coding-plan": async () => {
-      return {
-        autoload: false,
-        options: {
-          baseURL: "https://api.minimax.io/anthropic/v1",
-        },
-      }
-    },
     ollama: async () => {
       const auth = await Auth.get("ollama")
       if (auth?.type !== "ollama") return { autoload: false }
@@ -1122,6 +1114,8 @@ export namespace Provider {
     using _ = log.time("state")
     const config = await Config.get()
     const modelsDev = await ModelsDev.get()
+    delete modelsDev["minimax-cn"]
+    delete modelsDev["minimax-cn-coding-plan"]
     const database = mapValues(modelsDev, fromModelsDevProvider)
     if (database["arctic"]) {
       database["arctic"] = { ...database["arctic"], id: "arctic" }

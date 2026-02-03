@@ -73,21 +73,29 @@ export namespace FileWatcher {
       const subs = []
       const cfgIgnores = cfg.watcher?.ignore ?? []
 
-      subs.push(
-        await w.subscribe(Instance.directory, subscribe, {
-          ignore: [...FileIgnore.PATTERNS, ...cfgIgnores],
-          backend,
-        }),
-      )
-
-      const vcsDir = await $`git rev-parse --git-dir`.quiet().nothrow().cwd(Instance.worktree).text()
-      if (vcsDir && !cfgIgnores.includes(".git") && !cfgIgnores.includes(vcsDir)) {
+      try {
         subs.push(
-          await w.subscribe(vcsDir, subscribe, {
-            ignore: ["hooks", "info", "logs", "objects", "refs", "worktrees", "modules", "lfs"],
+          await w.subscribe(Instance.directory, subscribe, {
+            ignore: [...FileIgnore.PATTERNS, ...cfgIgnores],
             backend,
           }),
         )
+      } catch (e) {
+        log.warn("failed to watch directory", { directory: Instance.directory, error: e })
+      }
+
+      const vcsDir = await $`git rev-parse --git-dir`.quiet().nothrow().cwd(Instance.worktree).text()
+      if (vcsDir && !cfgIgnores.includes(".git") && !cfgIgnores.includes(vcsDir)) {
+        try {
+          subs.push(
+            await w.subscribe(vcsDir, subscribe, {
+              ignore: ["hooks", "info", "logs", "objects", "refs", "worktrees", "modules", "lfs"],
+              backend,
+            }),
+          )
+        } catch (e) {
+          log.warn("failed to watch git directory", { vcsDir, error: e })
+        }
       }
 
       return { subs }

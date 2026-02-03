@@ -1683,6 +1683,8 @@ export namespace Server {
           const enabled = config.enabled_providers ? new Set(config.enabled_providers) : undefined
 
           const allProviders = await ModelsDev.get()
+          delete allProviders["minimax-cn"]
+          delete allProviders["minimax-cn-coding-plan"]
           const filteredProviders: Record<string, (typeof allProviders)[string]> = {}
           for (const [key, value] of Object.entries(allProviders)) {
             if ((enabled ? enabled.has(key) : true) && !disabled.has(key)) {
