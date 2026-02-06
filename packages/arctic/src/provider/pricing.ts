@@ -59,6 +59,7 @@ const COPILOT_MULTIPLIERS: Record<string, CopilotMultiplier> = {
   "gpt-5.1-codex-max": { paid: 1, free: null },
   "gpt-5.2": { paid: 1, free: null },
   "gpt-5.2-codex": { paid: 1, free: null },
+  "gpt-5.3-codex": { paid: 1, free: null },
   "grok-code-fast-1": { paid: 0.25, free: null },
   "raptor-mini": { paid: 0, free: null },
 }
