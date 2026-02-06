@@ -3,6 +3,8 @@ import z from "zod"
 import { Provider } from "../provider/provider"
 import { generateObject, type ModelMessage } from "ai"
 import PROMPT_GENERATE from "./generate.txt"
+import PROMPT_GENERAL from "./general.txt"
+import PROMPT_BUILD from "./build.txt"
 import { SystemPrompt } from "../session/system"
 import { Instance } from "../project/instance"
 import { mergeDeep } from "remeda"
@@ -104,6 +106,7 @@ export namespace Agent {
       general: {
         name: "general",
         description: `General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.`,
+        prompt: PROMPT_GENERAL,
         tools: {
           todoread: false,
           todowrite: false,
@@ -151,6 +154,7 @@ export namespace Agent {
       },
       build: {
         name: "build",
+        prompt: PROMPT_BUILD,
         tools: { ...defaultTools },
         options: {},
         permission: agentPermission,
