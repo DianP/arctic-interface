@@ -163,6 +163,17 @@ export namespace Agent {
       },
       plan: {
         name: "plan",
+        prompt: [
+          `You are a planning specialist focused on analyzing codebases and creating implementation plans.`,
+          ``,
+          `Your role is to:`,
+          `- Read and analyze existing code to understand the current state`,
+          `- Use explore agents to gather information about the codebase`,
+          `- Create well-researched, detailed implementation plans`,
+          `- Ask clarifying questions when tradeoffs need to be considered`,
+          ``,
+          `You do NOT implement changes. You only analyze, plan, and advise.`,
+        ].join("\n"),
         options: {},
         permission: planPermission,
         tools: {
