@@ -87,7 +87,12 @@ export namespace Config {
     for (const dir of directories) {
       await assertValid(dir)
 
-      if (dir.endsWith(".arctic") || dir.endsWith(".opencode") || dir.endsWith(".agent") || dir === Flag.ARCTIC_CONFIG_DIR) {
+      if (
+        dir.endsWith(".arctic") ||
+        dir.endsWith(".opencode") ||
+        dir.endsWith(".agent") ||
+        dir === Flag.ARCTIC_CONFIG_DIR
+      ) {
         for (const file of ["arctic.jsonc", "arctic.json"]) {
           log.debug(`loading config from ${path.join(dir, file)}`)
           result = mergeConfigWithPlugins(result, await loadFile(path.join(dir, file)))
@@ -866,6 +871,12 @@ export namespace Config {
         .catchall(Agent)
         .optional()
         .describe("Agent configuration, see https://usearctic.sh/docs/agent"),
+      multi_account: z
+        .object({
+          mode: z.enum(["fill-first", "round-robin"]).default("fill-first"),
+        })
+        .optional()
+        .describe("Multi-account rotation mode for providers with multiple connections"),
       provider: z
         .record(z.string(), Provider)
         .optional()
@@ -1143,6 +1154,12 @@ export namespace Config {
     const existing = await loadFile(filepath)
     await Bun.write(filepath, JSON.stringify(mergeDeep(existing, config), null, 2))
     await Instance.dispose()
+  }
+
+  export async function updateGlobal(config: Info) {
+    const globalPath = path.join(Global.Path.config, "arctic.json")
+    const existing = await loadFile(globalPath)
+    await Bun.write(globalPath, JSON.stringify(mergeDeep(existing, config), null, 2))
   }
 
   export async function directories() {

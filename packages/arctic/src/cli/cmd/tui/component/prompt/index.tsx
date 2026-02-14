@@ -40,6 +40,7 @@ import { DialogSelect } from "../../ui/dialog-select"
 import { useToast } from "../../ui/toast"
 import { DialogAgent } from "../dialog-agent"
 import { DialogModel } from "../dialog-model"
+import { DialogMultiAccount } from "../dialog-multi-account"
 import { DialogPrompts } from "../dialog-prompts"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
 
@@ -168,11 +169,29 @@ export function Prompt(props: PromptProps) {
     const sessionModel = benchmark?.type === "child" ? benchmark.model : undefined
     const model = sessionModel ?? local.model.current()
     if (!model) return local.model.parsed()
+
     const provider = sync.data.provider.find((item) => item.id === model.providerID)
     const modelInfo = provider?.models?.[model.modelID]
+    let providerName = provider?.name ?? model.providerID
+
+    // Check if there's a recent account switch to show the effective account
+    if (props.sessionID) {
+      const accountSwitch = sync.data.session_account_switch[props.sessionID]
+      if (accountSwitch && Date.now() - accountSwitch.time < 30000) {
+        // Update the display name to show the switched account
+        // Format: "Provider Name (account)" -> "Provider Name (new_account)"
+        const parsed = providerName.match(/^(.+?)\s*\((.+)\)$/)
+        if (parsed) {
+          providerName = `${parsed[1]} (${accountSwitch.to})`
+        } else {
+          providerName = `${providerName} (${accountSwitch.to})`
+        }
+      }
+    }
+
     return {
       model: modelInfo?.name ?? model.modelID,
-      provider: provider?.name ?? model.providerID,
+      provider: providerName,
     }
   })
 
@@ -319,13 +338,27 @@ export function Prompt(props: PromptProps) {
 
     let cancelled = false
     const fetchLimits = async () => {
-      const providerID = (() => {
+      let providerID = (() => {
         if (model.providerID === "minimax") {
           const hasCodingPlan = sync.data.provider.some((item) => item.id === "minimax-coding-plan")
           return hasCodingPlan ? "minimax-coding-plan" : model.providerID
         }
         return model.providerID
       })()
+
+      // Check if there's an account switch for this session
+      const accountSwitch = sync.data.session_account_switch[sessionID]
+      if (accountSwitch && Date.now() - accountSwitch.time < 30000) {
+        const baseProvider = providerID.split(":")[0]
+        const switchedProvider = sync.data.provider.find((p) => {
+          if (!p.id.startsWith(baseProvider + ":")) return false
+          const connection = p.id.split(":")[1]
+          return connection === accountSwitch.to
+        })
+        if (switchedProvider) {
+          providerID = switchedProvider.id
+        }
+      }
 
       const record = await fetchUsageRecord({
         baseUrl: sdk.url,
@@ -1619,82 +1652,106 @@ export function Prompt(props: PromptProps) {
             <text fg={highlight()} onMouseUp={() => dialog.replace(() => <DialogAgent />)}>
               {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}
             </text>
-            <Show when={store.mode === "normal"}>
-              <text fg={theme.textMuted}>·</text>
-              <box flexDirection="row" gap={1} onMouseUp={() => dialog.replace(() => <DialogModel />)}>
-                <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
-                  {displayModel().model}
-                </text>
-                {(() => {
-                  const model = local.model.current()
-                  const supportsReasoning = local.thinking.supportsReasoning()
-                  const isGitHubCopilot =
-                    model?.providerID === "github-copilot" || model?.providerID === "github-copilot-enterprise"
-                  const multiplier =
-                    isGitHubCopilot && model ? Pricing.getCopilotMultiplier(model.modelID, "paid") : null
-
-                  const showBadge = supportsReasoning || (isGitHubCopilot && multiplier !== null)
-                  if (!showBadge) return null
-
-                  const parts: string[] = []
-                  if (supportsReasoning) {
-                    parts.push(local.thinking.current())
-                  }
-                  if (isGitHubCopilot && multiplier !== null) {
-                    parts.push(`x${multiplier}`)
-                  }
-
-                  return (
-                    <text
-                      fg={
-                        supportsReasoning
-                          ? ({ low: theme.textMuted, medium: theme.warning, high: theme.primary }[
-                              local.thinking.current()
-                            ] ?? theme.textMuted)
-                          : theme.textMuted
-                      }
-                      onMouseUp={(e) => {
-                        e.stopPropagation()
-                        supportsReasoning && local.thinking.cycle()
-                      }}
-                    >
-                      ({parts.join(", ")})
-                    </text>
-                  )
-                })()}
-                <text fg={theme.textMuted}>{displayModel().provider}</text>
-              </box>
-            </Show>
           </box>
           <Show when={store.mode === "normal"}>
-            <box flexDirection="row" gap={1} flexShrink={0}>
-              <Show when={usageLimits() !== undefined}>
-                <text fg={theme.textMuted}>·</text>
-                {(() => {
-                  const limits = usageLimits()!
-                  const model = local.model.current()
-                  const isMinimax = model?.providerID === "minimax" || model?.providerID === "minimax-coding-plan"
-                  const remaining = limits.percent !== undefined ? Math.max(0, 100 - limits.percent) : undefined
-                  const percentValue = isMinimax ? (limits.percent ?? undefined) : remaining
-                  const color = percentValue !== undefined && percentValue <= 15 ? theme.error : theme.textMuted
-                  const label = (() => {
-                    if (percentValue !== undefined) {
-                      return `${percentValue.toFixed(0)}% left${limits.timeLeft ? ` (${limits.timeLeft})` : ""}`
+            <text fg={theme.textMuted}>·</text>
+            <box flexDirection="row" gap={1} flexShrink={0} onMouseUp={() => dialog.replace(() => <DialogModel />)}>
+              <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
+                {displayModel().model}
+              </text>
+              {(() => {
+                const model = local.model.current()
+                const supportsReasoning = local.thinking.supportsReasoning()
+                const isGitHubCopilot =
+                  model?.providerID === "github-copilot" || model?.providerID === "github-copilot-enterprise"
+                const multiplier = isGitHubCopilot && model ? Pricing.getCopilotMultiplier(model.modelID, "paid") : null
+
+                const showBadge = supportsReasoning || (isGitHubCopilot && multiplier !== null)
+                if (!showBadge) return null
+
+                const parts: string[] = []
+                if (supportsReasoning) {
+                  parts.push(local.thinking.current())
+                }
+                if (isGitHubCopilot && multiplier !== null) {
+                  parts.push(`x${multiplier}`)
+                }
+
+                return (
+                  <text
+                    fg={
+                      supportsReasoning
+                        ? ({ low: theme.textMuted, medium: theme.warning, high: theme.primary }[
+                            local.thinking.current()
+                          ] ?? theme.textMuted)
+                        : theme.textMuted
                     }
-                    return limits.timeLeft ? `resets in ${limits.timeLeft}` : ""
-                  })()
-                  return (
-                    <text fg={color} onMouseUp={() => command.trigger("arctic.usage", "prompt")}>
-                      {label}
-                    </text>
-                  )
-                })()}
-              </Show>
-              <Show when={sync.data.permission_bypass_enabled && !props.sessionID}>
-                <text fg={theme.textMuted}>·</text>
-                <text fg={theme.error}>⏵⏵ permission bypass enabled</text>
-              </Show>
+                    onMouseUp={(e) => {
+                      e.stopPropagation()
+                      supportsReasoning && local.thinking.cycle()
+                    }}
+                  >
+                    ({parts.join(", ")})
+                  </text>
+                )
+              })()}
             </box>
+            <text fg={theme.textMuted}>·</text>
+            <box flexDirection="row" gap={1} flexShrink={0}>
+              <text fg={theme.textMuted}>{displayModel().provider}</text>
+            </box>
+            {(() => {
+              const multiAccountMode = createMemo(() => {
+                const config = sync.data.config as any
+                // Default to fill-first if not configured
+                return config?.multi_account?.mode ?? "fill-first"
+              })
+              const hasMultipleAccounts = createMemo(() => {
+                const model = local.model.current()
+                if (!model) return false
+                const baseProvider = model.providerID.split(":")[0]
+                // Check if there are any connection providers for this base provider
+                return sync.data.provider.some(
+                  (p) =>
+                    p.id.startsWith(baseProvider + ":") ||
+                    (p.id === baseProvider && sync.data.provider.some((p2) => p2.id.startsWith(baseProvider + ":"))),
+                )
+              })
+              return (
+                <Show when={hasMultipleAccounts()}>
+                  <text fg={theme.textMuted}>·</text>
+                  <text fg={theme.textMuted} onMouseUp={() => dialog.replace(() => <DialogMultiAccount />)}>
+                    {multiAccountMode() === "round-robin" ? "⟳ Round-Robin" : "↻ Fill-First"}
+                  </text>
+                </Show>
+              )
+            })()}
+            <Show when={usageLimits() !== undefined}>
+              <text fg={theme.textMuted}>·</text>
+              {(() => {
+                const limits = usageLimits()!
+                const model = local.model.current()
+                const isMinimax = model?.providerID === "minimax" || model?.providerID === "minimax-coding-plan"
+                const remaining = limits.percent !== undefined ? Math.max(0, 100 - limits.percent) : undefined
+                const percentValue = isMinimax ? (limits.percent ?? undefined) : remaining
+                const color = percentValue !== undefined && percentValue <= 15 ? theme.error : theme.textMuted
+                const label = (() => {
+                  if (percentValue !== undefined) {
+                    return `${percentValue.toFixed(0)}% left${limits.timeLeft ? ` (${limits.timeLeft})` : ""}`
+                  }
+                  return limits.timeLeft ? `resets in ${limits.timeLeft}` : ""
+                })()
+                return (
+                  <text fg={color} onMouseUp={() => command.trigger("arctic.usage", "prompt")}>
+                    {label}
+                  </text>
+                )
+              })()}
+            </Show>
+            <Show when={sync.data.permission_bypass_enabled && !props.sessionID}>
+              <text fg={theme.textMuted}>·</text>
+              <text fg={theme.error}>⏵⏵ permission bypass enabled</text>
+            </Show>
           </Show>
         </box>
         <Show when={props.exitConfirmation}>
@@ -1763,6 +1820,27 @@ export function Prompt(props: PromptProps) {
                   <box onMouseUp={handleMessageClick}>
                     <text fg={theme.error}>{retryText()}</text>
                   </box>
+                </Show>
+              )
+            })()}
+            {(() => {
+              const accountSwitch = createMemo(() => {
+                const s = status()
+                if (s.type === "account-switch") return s
+                // Also check persisted account switch (lasts 5 seconds)
+                const sessionID = props.sessionID
+                if (!sessionID) return
+                const persisted = sync.data.session_account_switch[sessionID]
+                if (!persisted) return
+                // Expire after 5 seconds
+                if (Date.now() - persisted.time > 5000) return
+                return persisted
+              })
+
+              return (
+                <Show when={accountSwitch()}>
+                  <text fg={theme.textMuted}> using </text>
+                  <text fg={theme.primary}>{accountSwitch()!.to}</text>
                 </Show>
               )
             })()}

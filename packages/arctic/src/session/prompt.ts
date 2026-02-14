@@ -19,6 +19,7 @@ import { Identifier } from "../id/id"
 import { Plugin } from "../plugin"
 import { Instance } from "../project/instance"
 import { Provider } from "../provider/provider"
+import { MultiAccount } from "../provider/multi"
 import { ProviderTransform } from "../provider/transform"
 import { Log } from "../util/log"
 import { BenchmarkSchema } from "./benchmark-schema"
@@ -379,6 +380,7 @@ export namespace SessionPrompt {
     using _ = defer(() => cancel(sessionID))
 
     let step = 0
+    let lastUsedProviderID: string | undefined
     while (true) {
       log.info("loop", { step, sessionID })
       if (abort.aborted) {
@@ -441,7 +443,8 @@ export namespace SessionPrompt {
 
       SessionStatus.set(sessionID, { type: "busy" })
       step++
-      if (step === 1)
+
+      if (step === 1) {
         ensureTitle({
           session: await Session.get(sessionID),
           modelID: lastUser.model.modelID,
@@ -449,8 +452,27 @@ export namespace SessionPrompt {
           message: msgs.find((m) => m.info.role === "user")!,
           history: msgs,
         })
+      }
 
-      const model = await Provider.getModel(lastUser.model.providerID, lastUser.model.modelID)
+      // Get effective providerID for multi-account
+      const effectiveProviderID = await MultiAccount.getCurrent(lastUser.model.providerID)
+      lastUsedProviderID = effectiveProviderID
+      const model = await Provider.getModel(effectiveProviderID, lastUser.model.modelID)
+
+      // Log account switch for verification
+      if (effectiveProviderID !== lastUser.model.providerID) {
+        log.info("✓ MULTI-ACCOUNT: Using switched account", {
+          from: lastUser.model.providerID,
+          to: effectiveProviderID,
+          modelID: model.id,
+        })
+      } else {
+        log.debug("using provider", {
+          providerID: effectiveProviderID,
+          modelID: model.id,
+        })
+      }
+
       const language = await Provider.getLanguage(model)
       const task = tasks.pop()
 
@@ -819,6 +841,20 @@ export namespace SessionPrompt {
     }
     SessionCompaction.prune({ sessionID })
     SessionStatus.set(sessionID, { type: "idle" })
+
+    // Rotate account for round-robin mode AFTER response completes
+    if (lastUsedProviderID) {
+      const rotateResult = await MultiAccount.rotate(lastUsedProviderID)
+      if (rotateResult) {
+        log.info("multi-account rotate (after response)", { from: rotateResult.from, to: rotateResult.to })
+        SessionStatus.set(sessionID, {
+          type: "account-switch",
+          from: rotateResult.from,
+          to: rotateResult.to,
+        })
+      }
+    }
+
     for await (const item of MessageV2.stream(sessionID)) {
       if (item.info.role === "user") continue
       const queued = state()[sessionID]?.callbacks ?? []

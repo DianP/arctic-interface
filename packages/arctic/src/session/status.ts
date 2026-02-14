@@ -18,11 +18,19 @@ export namespace SessionStatus {
       z.object({
         type: z.literal("busy"),
       }),
+      z.object({
+        type: z.literal("account-switch"),
+        from: z.string(),
+        to: z.string(),
+      }),
     ])
     .meta({
       ref: "SessionStatus",
     })
   export type Info = z.infer<typeof Info>
+
+  // Track last account switch for UI display (persists even after status changes)
+  const accountSwitchState = new Map<string, { from: string; to: string; time: number }>()
 
   export const Event = {
     Status: BusEvent.define(
@@ -71,6 +79,26 @@ export namespace SessionStatus {
       delete state()[sessionID]
       return
     }
+    // Store account switch info for UI display
+    if (status.type === "account-switch") {
+      accountSwitchState.set(sessionID, {
+        from: status.from,
+        to: status.to,
+        time: Date.now(),
+      })
+    }
     state()[sessionID] = status
+  }
+
+  // Get last account switch (returns undefined if older than 5 seconds)
+  export function getLastAccountSwitch(sessionID: string): { from: string; to: string } | undefined {
+    const switchInfo = accountSwitchState.get(sessionID)
+    if (!switchInfo) return undefined
+    // Expire after 5 seconds
+    if (Date.now() - switchInfo.time > 5000) {
+      accountSwitchState.delete(sessionID)
+      return undefined
+    }
+    return { from: switchInfo.from, to: switchInfo.to }
   }
 }

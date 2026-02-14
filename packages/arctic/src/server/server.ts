@@ -406,6 +406,31 @@ export namespace Server {
           return c.json(config)
         },
       )
+      .post(
+        "/config/global",
+        describeRoute({
+          summary: "Update global configuration",
+          description: "Update global Arctic configuration settings (saved to ~/.config/arctic/).",
+          operationId: "config.updateGlobal",
+          responses: {
+            200: {
+              description: "Successfully updated global config",
+              content: {
+                "application/json": {
+                  schema: resolver(Config.Info),
+                },
+              },
+            },
+            ...errors(400),
+          },
+        }),
+        validator("json", Config.Info),
+        async (c) => {
+          const config = c.req.valid("json")
+          await Config.updateGlobal(config)
+          return c.json(config)
+        },
+      )
       .get(
         "/config/export",
         describeRoute({

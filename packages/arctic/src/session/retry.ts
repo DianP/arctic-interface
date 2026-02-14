@@ -90,7 +90,7 @@ export namespace SessionRetry {
   }
 
   // check if error is a rate limit error (429 or RESOURCE_EXHAUSTED)
-  function isRateLimitError(error: MessageV2.APIError): boolean {
+  export function isRateLimitError(error: MessageV2.APIError): boolean {
     // check status code
     if (error.data.statusCode === 429) return true
 

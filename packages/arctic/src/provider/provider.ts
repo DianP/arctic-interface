@@ -1890,6 +1890,11 @@ export namespace Provider {
       })
       const s = await state()
       const provider = s.providers[model.providerID]
+
+      if (!provider) {
+        log.error("Provider not found", { providerID: model.providerID, availableProviders: Object.keys(s.providers) })
+      }
+
       const options = { ...provider.options }
 
       if (model.api.npm.includes("@ai-sdk/openai-compatible") && options["includeUsage"] !== false) {

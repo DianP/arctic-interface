@@ -576,6 +576,11 @@ export type SessionStatus =
   | {
       type: "busy"
     }
+  | {
+      type: "account-switch"
+      from: string
+      to: string
+    }
 
 export type EventSessionStatus = {
   type: "session.status"
@@ -773,13 +778,6 @@ export type EventGlobalDisposed = {
   }
 }
 
-export type EventIdeInstalled = {
-  type: "ide.installed"
-  properties: {
-    ide: string
-  }
-}
-
 export type Event =
   | EventInstallationUpdated
   | EventInstallationUpdateAvailable
@@ -816,7 +814,6 @@ export type Event =
   | EventVcsBranchUpdated
   | EventServerConnected
   | EventGlobalDisposed
-  | EventIdeInstalled
 
 export type GlobalEvent = {
   directory: string
@@ -1492,6 +1489,12 @@ export type Config = {
     general?: AgentConfig
     explore?: AgentConfig
     [key: string]: AgentConfig | undefined
+  }
+  /**
+   * Multi-account rotation mode for providers with multiple connections
+   */
+  multi_account?: {
+    mode?: "fill-first" | "round-robin"
   }
   /**
    * Custom provider configurations and model overrides

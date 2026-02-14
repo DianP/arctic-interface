@@ -47,6 +47,13 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       session_status: {
         [sessionID: string]: SessionStatus
       }
+      session_account_switch: {
+        [sessionID: string]: {
+          from: string
+          to: string
+          time: number
+        }
+      }
       session_diff: {
         [sessionID: string]: Snapshot.FileDiff[]
       }
@@ -101,6 +108,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       vcs: undefined,
       path: { state: "", config: "", worktree: "", directory: "" },
       pty: [],
+      session_account_switch: {},
     })
 
     const sdk = useSDK()
@@ -181,7 +189,16 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         case "session.status": {
           const sessionID = event.properties.sessionID
           const status = event.properties.status
-          
+
+          // Track account switches for UI display
+          if (status.type === "account-switch") {
+            setStore("session_account_switch", sessionID, {
+              from: status.from,
+              to: status.to,
+              time: Date.now(),
+            })
+          }
+
           setStore("session_status", sessionID, status)
 
           // track work time

@@ -4,6 +4,8 @@ import { Identifier } from "@/id/id"
 import { Permission } from "@/permission"
 import { Plugin } from "@/plugin"
 import type { Provider } from "@/provider/provider"
+import { MultiAccount } from "@/provider/multi"
+import { Provider as ProviderNS } from "@/provider/provider"
 import { Snapshot } from "@/snapshot"
 import { Log } from "@/util/log"
 import { streamText } from "ai"
@@ -41,6 +43,7 @@ export namespace SessionProcessor {
     let snapshot: string | undefined
     let blocked = false
     let attempt = 0
+    const rateLimitRetryMap = new Map<string, number>()
 
     const result = {
       get message() {
@@ -427,9 +430,58 @@ export namespace SessionProcessor {
               return "stop"
             }
             const retry = SessionRetry.retryable(error)
+
+            // Check for rate limit error - retry once per account, then switch
+            if (MessageV2.APIError.isInstance(error) && SessionRetry.isRateLimitError(error)) {
+              const providerID = input.model.providerID
+              const rateLimitAttempts = rateLimitRetryMap.get(providerID) ?? 0
+
+              if (rateLimitAttempts < 1) {
+                // First attempt on this account: retry once with short delay
+                rateLimitRetryMap.set(providerID, rateLimitAttempts + 1)
+                const delay = 2000 // 2 seconds
+                SessionStatus.set(input.sessionID, {
+                  type: "retry",
+                  attempt: rateLimitAttempts + 1,
+                  message: retry!,
+                  next: Date.now() + delay,
+                })
+                await SessionRetry.sleep(delay, input.abort).catch((e) => {
+                  if (input.abort.aborted) throw e
+                })
+                continue
+              }
+
+              // Already retried on this account: switch to next
+              const switchResult = await MultiAccount.switchNext(input.model.providerID)
+              const rotateResult = switchResult ?? (await MultiAccount.rotate(input.model.providerID))
+              if (rotateResult) {
+                const nextProvider = await MultiAccount.getNextProvider(input.model.providerID)
+                if (nextProvider) {
+                  const newModel = await ProviderNS.getModel(nextProvider, input.model.id)
+                  const newLanguage = await ProviderNS.getLanguage(newModel)
+                  streamInput.model = newLanguage
+                  input.model = newModel
+                  // Clear retry count for old provider, new provider will start fresh
+                  rateLimitRetryMap.delete(providerID)
+                  log.info("switched account (rate limit after retry)", {
+                    from: rotateResult.from,
+                    to: rotateResult.to,
+                  })
+                  SessionStatus.set(input.sessionID, {
+                    type: "account-switch",
+                    from: rotateResult.from,
+                    to: rotateResult.to,
+                  })
+                  continue
+                }
+              }
+            }
+
             if (retry !== undefined && attempt < MAX_RETRIES) {
               attempt++
               const delay = SessionRetry.delay(attempt, error.name === "APIError" ? error : undefined)
+
               SessionStatus.set(input.sessionID, {
                 type: "retry",
                 attempt,
@@ -440,6 +492,29 @@ export namespace SessionProcessor {
                 if (input.abort.aborted) throw e
               })
               continue
+            }
+            // Only switch account after all retries exhausted
+            const switchResult = await MultiAccount.switchNext(input.model.providerID)
+            const rotateResult = switchResult ?? (await MultiAccount.rotate(input.model.providerID))
+            if (rotateResult) {
+              const nextProvider = await MultiAccount.getNextProvider(input.model.providerID)
+              if (nextProvider) {
+                const newModel = await ProviderNS.getModel(nextProvider, input.model.id)
+                const newLanguage = await ProviderNS.getLanguage(newModel)
+                streamInput.model = newLanguage
+                input.model = newModel
+                attempt = 0
+                log.info("switched account after retries exhausted", {
+                  from: rotateResult.from,
+                  to: rotateResult.to,
+                })
+                SessionStatus.set(input.sessionID, {
+                  type: "account-switch",
+                  from: rotateResult.from,
+                  to: rotateResult.to,
+                })
+                continue
+              }
             }
             input.assistantMessage.error = error
             Bus.publish(Session.Event.Error, {
@@ -474,6 +549,8 @@ export namespace SessionProcessor {
           SessionStatus.set(input.sessionID, { type: "idle" })
           if (blocked) return "stop"
           if (input.assistantMessage.error) return "stop"
+          // Success - clear rate limit retry map
+          rateLimitRetryMap.clear()
           return "continue"
         }
       },

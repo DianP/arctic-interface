@@ -13,6 +13,7 @@ import { GenerateCommand } from "./cli/cmd/generate"
 import { ImportCommand } from "./cli/cmd/import"
 import { McpCommand } from "./cli/cmd/mcp"
 import { ModelsCommand } from "./cli/cmd/models"
+import { MultiAccountCommand } from "./cli/cmd/multi-account"
 import { SessionCommand } from "./cli/cmd/session"
 import { StatsCommand } from "./cli/cmd/stats"
 import { TelemetryCommand } from "./cli/cmd/telemetry"
@@ -221,6 +222,7 @@ const cli = yargs(hideBin(process.argv))
   .command(ImportCommand)
   .command(SessionCommand)
   .command(TelemetryCommand)
+  .command(MultiAccountCommand)
   .command(FeedbackCommand)
   .command(BugCommand)
   .fail((msg) => {

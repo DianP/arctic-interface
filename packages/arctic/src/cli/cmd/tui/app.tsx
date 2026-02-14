@@ -11,6 +11,7 @@ import { DialogConnections } from "@tui/component/dialog-connections"
 import { FeedbackDialog } from "@tui/component/dialog-feedback"
 import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogModel, useConnected } from "@tui/component/dialog-model"
+import { DialogMultiAccount } from "@tui/component/dialog-multi-account"
 import { DialogProvider as DialogProviderList } from "@tui/component/dialog-provider"
 import { DialogPty } from "@tui/component/dialog-pty"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
@@ -585,6 +586,14 @@ function App() {
       value: "provider.connections",
       onSelect: () => {
         dialog.replace(() => <DialogConnections />)
+      },
+      category: "Provider",
+    },
+    {
+      title: "Multi-account mode",
+      value: "provider.multi_account",
+      onSelect: () => {
+        dialog.replace(() => <DialogMultiAccount />)
       },
       category: "Provider",
     },
